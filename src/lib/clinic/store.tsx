@@ -88,7 +88,7 @@ export function ClinicProvider({ children }: { children: React.ReactNode }) {
     prescriptions,
     invoices,
     currentPatient: patients.find((p) => p.id === currentPatientId)!,
-    currentDoctor: doctors.find((d) => d.id === currentDoctorId) ?? doctors[0],
+    currentDoctor: (doctors.find((d) => d.id === currentDoctorId) ?? doctors[0])!,
     getDoctor: (id) => doctors.find((d) => d.id === id),
     getPatient: (id) => patients.find((p) => p.id === id),
 
