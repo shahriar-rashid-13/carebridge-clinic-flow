@@ -12,7 +12,7 @@ export const shiftDays = (offset: number) => {
 export const today = () => shiftDays(0);
 
 export const weekdayOf = (dateStr: string) =>
-  ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][new Date(`${dateStr}T12:00:00`).getDay()];
+  ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][new Date(`${dateStr}T12:00:00`).getDay()]!;
 
 export const prettyDate = (dateStr: string) =>
   new Date(`${dateStr}T12:00:00`).toLocaleDateString("en-US", {
