@@ -10,33 +10,180 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AppointmentsRouteImport } from './routes/appointments'
+import { Route as BillingRouteImport } from './routes/billing'
+import { Route as BookRouteImport } from './routes/book'
+import { Route as DoctorsRouteImport } from './routes/doctors'
+import { Route as PatientsRouteImport } from './routes/patients'
+import { Route as PrescriptionsRouteImport } from './routes/prescriptions'
+import { Route as ProfileRouteImport } from './routes/profile'
+import { Route as RecordsRouteImport } from './routes/records'
+import { Route as ReportsRouteImport } from './routes/reports'
+import { Route as ScheduleRouteImport } from './routes/schedule'
+import { Route as ConsultIdRouteImport } from './routes/consult.$id'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AppointmentsRoute = AppointmentsRouteImport.update({
+  id: '/appointments',
+  path: '/appointments',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BillingRoute = BillingRouteImport.update({
+  id: '/billing',
+  path: '/billing',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BookRoute = BookRouteImport.update({
+  id: '/book',
+  path: '/book',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DoctorsRoute = DoctorsRouteImport.update({
+  id: '/doctors',
+  path: '/doctors',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PatientsRoute = PatientsRouteImport.update({
+  id: '/patients',
+  path: '/patients',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PrescriptionsRoute = PrescriptionsRouteImport.update({
+  id: '/prescriptions',
+  path: '/prescriptions',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProfileRoute = ProfileRouteImport.update({
+  id: '/profile',
+  path: '/profile',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RecordsRoute = RecordsRouteImport.update({
+  id: '/records',
+  path: '/records',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ReportsRoute = ReportsRouteImport.update({
+  id: '/reports',
+  path: '/reports',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ScheduleRoute = ScheduleRouteImport.update({
+  id: '/schedule',
+  path: '/schedule',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ConsultIdRoute = ConsultIdRouteImport.update({
+  id: '/consult/$id',
+  path: '/consult/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/appointments': typeof AppointmentsRoute
+  '/billing': typeof BillingRoute
+  '/book': typeof BookRoute
+  '/doctors': typeof DoctorsRoute
+  '/patients': typeof PatientsRoute
+  '/prescriptions': typeof PrescriptionsRoute
+  '/profile': typeof ProfileRoute
+  '/records': typeof RecordsRoute
+  '/reports': typeof ReportsRoute
+  '/schedule': typeof ScheduleRoute
+  '/consult/$id': typeof ConsultIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/appointments': typeof AppointmentsRoute
+  '/billing': typeof BillingRoute
+  '/book': typeof BookRoute
+  '/doctors': typeof DoctorsRoute
+  '/patients': typeof PatientsRoute
+  '/prescriptions': typeof PrescriptionsRoute
+  '/profile': typeof ProfileRoute
+  '/records': typeof RecordsRoute
+  '/reports': typeof ReportsRoute
+  '/schedule': typeof ScheduleRoute
+  '/consult/$id': typeof ConsultIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/appointments': typeof AppointmentsRoute
+  '/billing': typeof BillingRoute
+  '/book': typeof BookRoute
+  '/doctors': typeof DoctorsRoute
+  '/patients': typeof PatientsRoute
+  '/prescriptions': typeof PrescriptionsRoute
+  '/profile': typeof ProfileRoute
+  '/records': typeof RecordsRoute
+  '/reports': typeof ReportsRoute
+  '/schedule': typeof ScheduleRoute
+  '/consult/$id': typeof ConsultIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/appointments'
+    | '/billing'
+    | '/book'
+    | '/doctors'
+    | '/patients'
+    | '/prescriptions'
+    | '/profile'
+    | '/records'
+    | '/reports'
+    | '/schedule'
+    | '/consult/$id'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/'
+    | '/appointments'
+    | '/billing'
+    | '/book'
+    | '/doctors'
+    | '/patients'
+    | '/prescriptions'
+    | '/profile'
+    | '/records'
+    | '/reports'
+    | '/schedule'
+    | '/consult/$id'
+  id:
+    | '__root__'
+    | '/'
+    | '/appointments'
+    | '/billing'
+    | '/book'
+    | '/doctors'
+    | '/patients'
+    | '/prescriptions'
+    | '/profile'
+    | '/records'
+    | '/reports'
+    | '/schedule'
+    | '/consult/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AppointmentsRoute: typeof AppointmentsRoute
+  BillingRoute: typeof BillingRoute
+  BookRoute: typeof BookRoute
+  DoctorsRoute: typeof DoctorsRoute
+  PatientsRoute: typeof PatientsRoute
+  PrescriptionsRoute: typeof PrescriptionsRoute
+  ProfileRoute: typeof ProfileRoute
+  RecordsRoute: typeof RecordsRoute
+  ReportsRoute: typeof ReportsRoute
+  ScheduleRoute: typeof ScheduleRoute
+  ConsultIdRoute: typeof ConsultIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -48,11 +195,99 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/appointments': {
+      id: '/appointments'
+      path: '/appointments'
+      fullPath: '/appointments'
+      preLoaderRoute: typeof AppointmentsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/billing': {
+      id: '/billing'
+      path: '/billing'
+      fullPath: '/billing'
+      preLoaderRoute: typeof BillingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/book': {
+      id: '/book'
+      path: '/book'
+      fullPath: '/book'
+      preLoaderRoute: typeof BookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/doctors': {
+      id: '/doctors'
+      path: '/doctors'
+      fullPath: '/doctors'
+      preLoaderRoute: typeof DoctorsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/patients': {
+      id: '/patients'
+      path: '/patients'
+      fullPath: '/patients'
+      preLoaderRoute: typeof PatientsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/prescriptions': {
+      id: '/prescriptions'
+      path: '/prescriptions'
+      fullPath: '/prescriptions'
+      preLoaderRoute: typeof PrescriptionsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/profile': {
+      id: '/profile'
+      path: '/profile'
+      fullPath: '/profile'
+      preLoaderRoute: typeof ProfileRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/records': {
+      id: '/records'
+      path: '/records'
+      fullPath: '/records'
+      preLoaderRoute: typeof RecordsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reports': {
+      id: '/reports'
+      path: '/reports'
+      fullPath: '/reports'
+      preLoaderRoute: typeof ReportsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/schedule': {
+      id: '/schedule'
+      path: '/schedule'
+      fullPath: '/schedule'
+      preLoaderRoute: typeof ScheduleRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/consult/$id': {
+      id: '/consult/$id'
+      path: '/consult/$id'
+      fullPath: '/consult/$id'
+      preLoaderRoute: typeof ConsultIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AppointmentsRoute: AppointmentsRoute,
+  BillingRoute: BillingRoute,
+  BookRoute: BookRoute,
+  DoctorsRoute: DoctorsRoute,
+  PatientsRoute: PatientsRoute,
+  PrescriptionsRoute: PrescriptionsRoute,
+  ProfileRoute: ProfileRoute,
+  RecordsRoute: RecordsRoute,
+  ReportsRoute: ReportsRoute,
+  ScheduleRoute: ScheduleRoute,
+  ConsultIdRoute: ConsultIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
