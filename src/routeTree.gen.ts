@@ -12,10 +12,13 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AppointmentsRouteImport } from './routes/appointments'
 import { Route as BookRouteImport } from './routes/book'
+import { Route as DoctorsRouteImport } from './routes/doctors'
+import { Route as PatientsRouteImport } from './routes/patients'
 import { Route as PrescriptionsRouteImport } from './routes/prescriptions'
 import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as RecordsRouteImport } from './routes/records'
 import { Route as ScheduleRouteImport } from './routes/schedule'
+import { Route as ConsultIdRouteImport } from './routes/consult.$id'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -30,6 +33,16 @@ const AppointmentsRoute = AppointmentsRouteImport.update({
 const BookRoute = BookRouteImport.update({
   id: '/book',
   path: '/book',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DoctorsRoute = DoctorsRouteImport.update({
+  id: '/doctors',
+  path: '/doctors',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PatientsRoute = PatientsRouteImport.update({
+  id: '/patients',
+  path: '/patients',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PrescriptionsRoute = PrescriptionsRouteImport.update({
@@ -52,34 +65,48 @@ const ScheduleRoute = ScheduleRouteImport.update({
   path: '/schedule',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ConsultIdRoute = ConsultIdRouteImport.update({
+  id: '/consult/$id',
+  path: '/consult/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/appointments': typeof AppointmentsRoute
   '/book': typeof BookRoute
+  '/doctors': typeof DoctorsRoute
+  '/patients': typeof PatientsRoute
   '/prescriptions': typeof PrescriptionsRoute
   '/profile': typeof ProfileRoute
   '/records': typeof RecordsRoute
   '/schedule': typeof ScheduleRoute
+  '/consult/$id': typeof ConsultIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/appointments': typeof AppointmentsRoute
   '/book': typeof BookRoute
+  '/doctors': typeof DoctorsRoute
+  '/patients': typeof PatientsRoute
   '/prescriptions': typeof PrescriptionsRoute
   '/profile': typeof ProfileRoute
   '/records': typeof RecordsRoute
   '/schedule': typeof ScheduleRoute
+  '/consult/$id': typeof ConsultIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/appointments': typeof AppointmentsRoute
   '/book': typeof BookRoute
+  '/doctors': typeof DoctorsRoute
+  '/patients': typeof PatientsRoute
   '/prescriptions': typeof PrescriptionsRoute
   '/profile': typeof ProfileRoute
   '/records': typeof RecordsRoute
   '/schedule': typeof ScheduleRoute
+  '/consult/$id': typeof ConsultIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -87,38 +114,50 @@ export interface FileRouteTypes {
     | '/'
     | '/appointments'
     | '/book'
+    | '/doctors'
+    | '/patients'
     | '/prescriptions'
     | '/profile'
     | '/records'
     | '/schedule'
+    | '/consult/$id'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/appointments'
     | '/book'
+    | '/doctors'
+    | '/patients'
     | '/prescriptions'
     | '/profile'
     | '/records'
     | '/schedule'
+    | '/consult/$id'
   id:
     | '__root__'
     | '/'
     | '/appointments'
     | '/book'
+    | '/doctors'
+    | '/patients'
     | '/prescriptions'
     | '/profile'
     | '/records'
     | '/schedule'
+    | '/consult/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AppointmentsRoute: typeof AppointmentsRoute
   BookRoute: typeof BookRoute
+  DoctorsRoute: typeof DoctorsRoute
+  PatientsRoute: typeof PatientsRoute
   PrescriptionsRoute: typeof PrescriptionsRoute
   ProfileRoute: typeof ProfileRoute
   RecordsRoute: typeof RecordsRoute
   ScheduleRoute: typeof ScheduleRoute
+  ConsultIdRoute: typeof ConsultIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -142,6 +181,20 @@ declare module '@tanstack/react-router' {
       path: '/book'
       fullPath: '/book'
       preLoaderRoute: typeof BookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/doctors': {
+      id: '/doctors'
+      path: '/doctors'
+      fullPath: '/doctors'
+      preLoaderRoute: typeof DoctorsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/patients': {
+      id: '/patients'
+      path: '/patients'
+      fullPath: '/patients'
+      preLoaderRoute: typeof PatientsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/prescriptions': {
@@ -172,6 +225,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ScheduleRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/consult/$id': {
+      id: '/consult/$id'
+      path: '/consult/$id'
+      fullPath: '/consult/$id'
+      preLoaderRoute: typeof ConsultIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -179,10 +239,13 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AppointmentsRoute: AppointmentsRoute,
   BookRoute: BookRoute,
+  DoctorsRoute: DoctorsRoute,
+  PatientsRoute: PatientsRoute,
   PrescriptionsRoute: PrescriptionsRoute,
   ProfileRoute: ProfileRoute,
   RecordsRoute: RecordsRoute,
   ScheduleRoute: ScheduleRoute,
+  ConsultIdRoute: ConsultIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
