@@ -1,7 +1,6 @@
 import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
 import { useAuth } from "@/lib/auth/store";
-import { ClinicProvider, useClinic } from "@/lib/clinic/store";
-import { AppShell } from "@/components/clinic/app-shell";
+import { useClinic } from "@/lib/clinic/store";
 import { useEffect } from "react";
 
 export const Route = createFileRoute("/_authenticated")({
@@ -23,18 +22,16 @@ function AuthenticatedLayout() {
     throw redirect({
       to: "/login",
       search: {
-        redirect: typeof window !== 'undefined' ? window.location.pathname : '/dashboard',
+        redirect: typeof window !== "undefined" ? window.location.pathname : "/dashboard",
       },
     });
   }
 
   return (
-    <ClinicProvider>
+    <>
       <AuthRoleSync />
-      <AppShell>
-        <Outlet />
-      </AppShell>
-    </ClinicProvider>
+      <Outlet />
+    </>
   );
 }
 

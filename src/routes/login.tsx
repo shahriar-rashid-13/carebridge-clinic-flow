@@ -1,12 +1,12 @@
 import * as React from "react";
 import { createFileRoute, Link, useNavigate, useSearch } from "@tanstack/react-router";
-import { useAuth } from "@/lib/auth/store";
+import { DEMO_USERS, useAuth } from "@/lib/auth/store";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Activity, Loader2 } from "lucide-react";
 import { toast } from "sonner";
-import { Role } from "@/lib/clinic/types";
+import type { Role } from "@/lib/clinic/types";
 
 export const Route = createFileRoute("/login")({
   validateSearch: (search: Record<string, unknown>) => ({
@@ -20,7 +20,8 @@ function LoginPage() {
   const navigate = useNavigate();
   const { redirect } = useSearch({ from: "/login" });
   const [isLoading, setIsLoading] = React.useState(false);
-  const [email, setEmail] = React.useState("");
+  const [email, setEmail] = React.useState("sarah@example.com");
+  const [password, setPassword] = React.useState("");
   const [role, setRole] = React.useState<Role>("patient");
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -35,6 +36,11 @@ function LoginPage() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleDemoPick = (demoUser: (typeof DEMO_USERS)[number]) => {
+    setEmail(demoUser.email);
+    setRole(demoUser.role);
   };
 
   return (
@@ -55,6 +61,19 @@ function LoginPage() {
 
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
           <div className="space-y-4">
+            <div className="grid gap-2 sm:grid-cols-3">
+              {DEMO_USERS.map((demoUser) => (
+                <button
+                  key={demoUser.email}
+                  type="button"
+                  onClick={() => handleDemoPick(demoUser)}
+                  className="rounded-md border border-border bg-card px-3 py-2 text-left text-xs transition-colors hover:bg-linen"
+                >
+                  <div className="font-medium text-foreground">{demoUser.name}</div>
+                  <div className="mt-1 text-muted-foreground">{demoUser.role}</div>
+                </button>
+              ))}
+            </div>
             <div className="space-y-2">
               <Label htmlFor="email">Email address</Label>
               <Input
@@ -64,6 +83,16 @@ function LoginPage() {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="password">Password</Label>
+              <Input
+                id="password"
+                type="password"
+                placeholder="Use any password for this demo"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
               />
             </div>
             <div className="space-y-2">
@@ -84,6 +113,15 @@ function LoginPage() {
           <Button type="submit" className="w-full" disabled={isLoading}>
             {isLoading ? <Loader2 className="mr-2 size-4 animate-spin" /> : null}
             Sign in
+          </Button>
+
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full"
+            onClick={() => toast.info("Google sign-in is demo-only for this frontend prototype.")}
+          >
+            Continue with Google
           </Button>
 
           <div className="relative">

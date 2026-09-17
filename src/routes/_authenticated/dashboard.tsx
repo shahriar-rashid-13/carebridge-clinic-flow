@@ -278,7 +278,7 @@ function ReceptionDashboard() {
       <PageHeader
         eyebrow="Front desk"
         title="Reception overview"
-        description="Clara Gomez · Everything moving through the clinic today."
+        description="Clara Morgan · Everything moving through the clinic today."
         actions={
           <Button asChild>
             <Link to="/appointments">

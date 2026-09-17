@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Activity, Loader2 } from "lucide-react";
 import { toast } from "sonner";
-import { Role } from "@/lib/clinic/types";
+import type { Role } from "@/lib/clinic/types";
 
 export const Route = createFileRoute("/signup")({
   component: SignupPage,
@@ -18,6 +18,7 @@ function SignupPage() {
   const [isLoading, setIsLoading] = React.useState(false);
   const [email, setEmail] = React.useState("");
   const [name, setName] = React.useState("");
+  const [password, setPassword] = React.useState("");
   const [role, setRole] = React.useState<Role>("patient");
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -25,7 +26,7 @@ function SignupPage() {
     setIsLoading(true);
     try {
       await signup(email, name, role);
-      toast.success("Account created successfully!");
+      toast.success("Demo account created successfully. You are now signed in.");
       navigate({ to: "/dashboard" });
     } catch (error) {
       toast.error("Failed to create account. Please try again.");
@@ -75,6 +76,16 @@ function SignupPage() {
               />
             </div>
             <div className="space-y-2">
+              <Label htmlFor="password">Password</Label>
+              <Input
+                id="password"
+                type="password"
+                placeholder="Create a demo password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
               <Label htmlFor="role">I am a</Label>
               <select
                 id="role"
@@ -92,6 +103,15 @@ function SignupPage() {
           <Button type="submit" className="w-full" disabled={isLoading}>
             {isLoading ? <Loader2 className="mr-2 size-4 animate-spin" /> : null}
             Create Account
+          </Button>
+
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full"
+            onClick={() => toast.info("Google sign-up is demo-only for this frontend prototype.")}
+          >
+            Continue with Google
           </Button>
 
           <div className="text-center text-sm">

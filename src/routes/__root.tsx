@@ -3,6 +3,8 @@ import {
   Outlet,
   Link,
   createRootRouteWithContext,
+  redirect,
+  useLocation,
   useRouter,
   HeadContent,
   Scripts,
@@ -14,6 +16,7 @@ import { reportLovableError } from "../lib/lovable-error-reporting";
 import { ClinicProvider } from "@/lib/clinic/store";
 import { AppShell } from "@/components/clinic/app-shell";
 import { Toaster } from "@/components/ui/sonner";
+import { useAuth } from "@/lib/auth/store";
 
 function NotFoundComponent() {
   return (
@@ -76,6 +79,20 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
 }
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
+  beforeLoad: ({ location }) => {
+    const publicPaths = new Set(["/", "/login", "/signup"]);
+    if (publicPaths.has(location.pathname)) {
+      return;
+    }
+
+    const { isAuthenticated } = useAuth.getState();
+    if (!isAuthenticated) {
+      throw redirect({
+        to: "/login",
+        search: { redirect: location.href },
+      });
+    }
+  },
   head: () => ({
     meta: [
       { charSet: "utf-8" },
@@ -129,14 +146,19 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+  const location = useLocation();
+  const isPublicLayout = ["/", "/login", "/signup"].includes(location.pathname);
 
   return (
     <QueryClientProvider client={queryClient}>
       <ClinicProvider>
-        <AppShell>
-          {/* Required: nested routes render here. */}
+        {isPublicLayout ? (
           <Outlet />
-        </AppShell>
+        ) : (
+          <AppShell>
+            <Outlet />
+          </AppShell>
+        )}
         <Toaster position="top-right" />
       </ClinicProvider>
     </QueryClientProvider>
