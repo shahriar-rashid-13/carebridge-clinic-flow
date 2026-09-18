@@ -208,20 +208,24 @@ function BillingPage() {
               Cancel
             </Button>
             <Button
-              onClick={() => {
+              onClick={async () => {
                 if (!billing || !billingDoctor) return;
-                clinic.createInvoice(billing.id, [
-                  {
-                    label: `${billingDoctor.specialty} consultation`,
-                    amount: billingDoctor.fee,
-                  },
-                  ...extras.map((l) => ({
-                    label: l,
-                    amount: SERVICES.find((x) => x.label === l)?.amount ?? 0,
-                  })),
-                ]);
-                toast.success("Invoice created", { description: money(draftTotal) });
-                setBilling(null);
+                try {
+                  await clinic.createInvoice(billing.id, [
+                    {
+                      label: `${billingDoctor.specialty} consultation`,
+                      amount: billingDoctor.fee,
+                    },
+                    ...extras.map((l) => ({
+                      label: l,
+                      amount: SERVICES.find((x) => x.label === l)?.amount ?? 0,
+                    })),
+                  ]);
+                  toast.success("Invoice created", { description: money(draftTotal) });
+                  setBilling(null);
+                } catch (error) {
+                  toast.error(error instanceof Error ? error.message : "Could not create invoice.");
+                }
               }}
             >
               Create invoice
@@ -293,13 +297,17 @@ function BillingPage() {
               Cancel
             </Button>
             <Button
-              onClick={() => {
+              onClick={async () => {
                 if (!paying) return;
-                clinic.markInvoicePaid(paying.id, method);
-                toast.success("Payment recorded", {
-                  description: `${paying.id} settled by ${method.toLowerCase()}.`,
-                });
-                setPaying(null);
+                try {
+                  await clinic.markInvoicePaid(paying.id, method);
+                  toast.success("Payment recorded", {
+                    description: `${paying.id} settled by ${method.toLowerCase()}.`,
+                  });
+                  setPaying(null);
+                } catch (error) {
+                  toast.error(error instanceof Error ? error.message : "Could not record payment.");
+                }
               }}
             >
               Mark as paid

@@ -60,11 +60,15 @@ function SchedulePage() {
             <Switch
               id="avail"
               checked={currentDoctor.active}
-              onCheckedChange={() => {
-                toggleDoctorActive(currentDoctor.id);
-                toast.success(
-                  currentDoctor.active ? "Marked unavailable" : "Marked available for booking",
-                );
+              onCheckedChange={async () => {
+                try {
+                  await toggleDoctorActive(currentDoctor.id);
+                  toast.success(
+                    currentDoctor.active ? "Marked unavailable" : "Marked available for booking",
+                  );
+                } catch (error) {
+                  toast.error(error instanceof Error ? error.message : "Could not update availability.");
+                }
               }}
             />
           </div>

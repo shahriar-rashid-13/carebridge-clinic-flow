@@ -55,6 +55,12 @@ const emptyDoctor = (): Doctor => ({
 function DoctorsPage() {
   const { role, doctors, appointments, toggleDoctorActive, upsertDoctor } = useClinic();
   const [editing, setEditing] = React.useState<Doctor | null>(null);
+  const [rawSlots, setRawSlots] = React.useState("");
+
+  const openDoctorEditor = (doctor: Doctor) => {
+    setEditing({ ...doctor });
+    setRawSlots(doctor.slots.join(", "));
+  };
 
   if (role !== "receptionist") {
     return (
@@ -72,7 +78,7 @@ function DoctorsPage() {
         title="Manage doctors"
         description="Working days, slots, fees and booking availability."
         actions={
-          <Button onClick={() => setEditing(emptyDoctor())}>
+          <Button onClick={() => openDoctorEditor(emptyDoctor())}>
             <Plus className="size-4" /> Add doctor
           </Button>
         }
@@ -124,12 +130,16 @@ function DoctorsPage() {
                 <Switch
                   id={`sw-${d.id}`}
                   checked={d.active}
-                  onCheckedChange={() => {
-                    toggleDoctorActive(d.id);
-                    toast.success(`${d.name} is now ${d.active ? "unavailable" : "bookable"}`);
+                  onCheckedChange={async () => {
+                    try {
+                      await toggleDoctorActive(d.id);
+                      toast.success(`${d.name} is now ${d.active ? "unavailable" : "bookable"}`);
+                    } catch (error) {
+                      toast.error(error instanceof Error ? error.message : "Could not update doctor availability.");
+                    }
                   }}
                 />
-                <Button variant="outline" size="sm" onClick={() => setEditing({ ...d })}>
+                <Button variant="outline" size="sm" onClick={() => openDoctorEditor(d)}>
                   Edit
                 </Button>
               </div>
@@ -214,16 +224,8 @@ function DoctorsPage() {
               <div>
                 <Label className="text-xs">Time slots (comma separated)</Label>
                 <Input
-                  value={editing.slots.join(", ")}
-                  onChange={(e) =>
-                    setEditing({
-                      ...editing,
-                      slots: e.target.value
-                        .split(",")
-                        .map((s) => s.trim())
-                        .filter(Boolean),
-                    })
-                  }
+                  value={rawSlots}
+                  onChange={(e) => setRawSlots(e.target.value)}
                   className="mt-1.5"
                 />
               </div>
@@ -243,15 +245,25 @@ function DoctorsPage() {
               Cancel
             </Button>
             <Button
-              onClick={() => {
+              onClick={async () => {
                 if (!editing) return;
                 if (!editing.name.trim() || !editing.specialty.trim()) {
                   toast.error("Name and specialty are required.");
                   return;
                 }
-                upsertDoctor(editing);
-                toast.success("Doctor schedule saved");
-                setEditing(null);
+                try {
+                  await upsertDoctor({
+                    ...editing,
+                    slots: rawSlots
+                      .split(",")
+                      .map((slot) => slot.trim())
+                      .filter(Boolean),
+                  });
+                  toast.success("Doctor schedule saved");
+                  setEditing(null);
+                } catch (error) {
+                  toast.error(error instanceof Error ? error.message : "Could not save doctor schedule.");
+                }
               }}
             >
               Save doctor

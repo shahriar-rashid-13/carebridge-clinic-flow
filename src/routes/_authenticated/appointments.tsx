@@ -180,11 +180,15 @@ function AppointmentsPage() {
                       <>
                         <Button
                           size="sm"
-                          onClick={() => {
-                            clinic.setAppointmentStatus(a.id, "Confirmed");
-                            toast.success("Appointment confirmed", {
-                              description: `${pat?.name} with ${doc?.name} on ${prettyDate(a.date)}.`,
-                            });
+                          onClick={async () => {
+                            try {
+                              await clinic.setAppointmentStatus(a.id, "Confirmed");
+                              toast.success("Appointment confirmed", {
+                                description: `${pat?.name} with ${doc?.name} on ${prettyDate(a.date)}.`,
+                              });
+                            } catch (error) {
+                              toast.error(error instanceof Error ? error.message : "Could not confirm appointment.");
+                            }
                           }}
                         >
                           Confirm
@@ -278,11 +282,15 @@ function AppointmentsPage() {
           <AlertDialogFooter>
             <AlertDialogCancel>Keep it</AlertDialogCancel>
             <AlertDialogAction
-              onClick={() => {
+              onClick={async () => {
                 if (!cancelling) return;
-                clinic.setAppointmentStatus(cancelling.id, "Cancelled");
-                toast.success("Appointment cancelled");
-                setCancelling(null);
+                try {
+                  await clinic.setAppointmentStatus(cancelling.id, "Cancelled");
+                  toast.success("Appointment cancelled");
+                  setCancelling(null);
+                } catch (error) {
+                  toast.error(error instanceof Error ? error.message : "Could not cancel appointment.");
+                }
               }}
             >
               Cancel appointment
@@ -364,13 +372,17 @@ function RescheduleDialog({ appt, onClose }: { appt: Appointment | null; onClose
           </Button>
           <Button
             disabled={!slot || !dayOk}
-            onClick={() => {
+            onClick={async () => {
               if (!appt) return;
-              rescheduleAppointment(appt.id, date, slot);
-              toast.success("Appointment rescheduled", {
-                description: `Now ${prettyDate(date)} at ${slot} — confirmed.`,
-              });
-              onClose();
+              try {
+                await rescheduleAppointment(appt.id, date, slot);
+                toast.success("Appointment rescheduled", {
+                  description: `Now ${prettyDate(date)} at ${slot} — confirmed.`,
+                });
+                onClose();
+              } catch (error) {
+                toast.error(error instanceof Error ? error.message : "Could not reschedule appointment.");
+              }
             }}
           >
             <CalendarClock className="size-4" /> Save & confirm

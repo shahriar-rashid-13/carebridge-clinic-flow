@@ -62,7 +62,7 @@ function ConsultPage() {
   const update = (i: number, key: keyof Medication, v: string) =>
     setMeds((prev) => prev.map((m, idx) => (idx === i ? { ...m, [key]: v } : m)));
 
-  const submit = () => {
+  const submit = async () => {
     const filled = meds.filter((m) => m.name.trim());
     if (!diagnosis.trim()) {
       toast.error("Add a diagnosis before completing the visit.");
@@ -72,11 +72,15 @@ function ConsultPage() {
       toast.error("Add at least one medication.");
       return;
     }
-    completeConsultation({ appointmentId: appt.id, diagnosis, medications: filled, notes });
-    toast.success("Prescription issued", {
-      description: `${patient?.name}'s visit is marked completed and the prescription is in their portal.`,
-    });
-    navigate({ to: "/appointments" });
+    try {
+      await completeConsultation({ appointmentId: appt.id, diagnosis, medications: filled, notes });
+      toast.success("Prescription issued", {
+        description: `${patient?.name}'s visit is marked completed and the prescription is in their portal.`,
+      });
+      navigate({ to: "/appointments" });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not save the consultation.");
+    }
   };
 
   return (

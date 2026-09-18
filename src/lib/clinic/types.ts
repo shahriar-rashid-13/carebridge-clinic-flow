@@ -71,6 +71,7 @@ export interface InvoiceItem {
 
 export interface Invoice {
   id: string;
+  databaseId?: string;
   appointmentId: string;
   patientId: string;
   doctorId: string;

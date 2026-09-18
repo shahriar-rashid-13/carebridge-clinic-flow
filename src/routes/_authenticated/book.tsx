@@ -53,17 +53,21 @@ function BookPage() {
     );
   }
 
-  const submit = (e: React.FormEvent) => {
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!doctor || !slot || !reason.trim()) {
       toast.error("Pick a doctor, a time slot and add a reason.");
       return;
     }
-    bookAppointment({ patientId: currentPatientId, doctorId, date, slot, reason, notes });
-    toast.success("Appointment requested", {
-      description: `${doctor.name} · ${prettyDate(date)} at ${slot}. Reception will confirm shortly.`,
-    });
-    navigate({ to: "/appointments" });
+    try {
+      await bookAppointment({ patientId: currentPatientId, doctorId, date, slot, reason, notes });
+      toast.success("Appointment requested", {
+        description: `${doctor.name} · ${prettyDate(date)} at ${slot}. Reception will confirm shortly.`,
+      });
+      navigate({ to: "/appointments" });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not request appointment.");
+    }
   };
 
   return (
