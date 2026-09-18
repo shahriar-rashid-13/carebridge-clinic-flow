@@ -1,3 +1,5 @@
+// import { useEffect } from "react";
+// import { testSupabaseConnection } from "@/lib/supabase/test";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowRight, CalendarCheck2, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -17,6 +19,13 @@ export const Route = createFileRoute("/")({
 });
 
 function LandingPage() {
+
+  // test DB connection //
+  
+  // useEffect(() => {
+  //   testSupabaseConnection();
+  
+  // }, []);
   return (
     <div className="min-h-screen bg-[#f7f4ed] px-4 py-8 text-[#16231f] sm:px-6 lg:px-8">
       <div className="mx-auto max-w-6xl">
