@@ -16,7 +16,7 @@ import { reportLovableError } from "../lib/lovable-error-reporting";
 import { ClinicProvider } from "@/lib/clinic/store";
 import { AppShell } from "@/components/clinic/app-shell";
 import { Toaster } from "@/components/ui/sonner";
-import { useAuth } from "@/lib/auth/store";
+import { initializeAuth, useAuth } from "@/lib/auth/store";
 
 function NotFoundComponent() {
   return (
@@ -79,14 +79,20 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
 }
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
-  beforeLoad: ({ location }) => {
+  beforeLoad: async ({ location }) => {
     const publicPaths = new Set(["/", "/login", "/signup"]);
     if (publicPaths.has(location.pathname)) {
       return;
     }
 
-    const { isAuthenticated } = useAuth.getState();
-    if (!isAuthenticated) {
+    // Supabase's browser client restores sessions from browser storage. The SSR
+    // runtime has no cookie-backed Supabase session yet, so auth is resolved by
+    // the client-side authenticated layout after hydration.
+    if (typeof window === "undefined") return;
+
+    await initializeAuth();
+    const { isAuthenticated, profileError } = useAuth.getState();
+    if (!isAuthenticated && !profileError) {
       throw redirect({
         to: "/login",
         search: { redirect: location.href },

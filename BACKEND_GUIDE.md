@@ -2,7 +2,7 @@
 
 This document explains the CareBridge frontend well enough for a beginner to design and implement a backend without changing the current clinic workflow.
 
-CareBridge is currently a frontend-only clinic prototype. It uses React, TypeScript, Vite, TanStack Router, React Query dependencies, and a local `ClinicProvider` with in-memory mock data. There is no backend, database, persistent authentication, or server-side session yet.
+CareBridge currently uses Supabase for email/password authentication and role profiles, alongside a local `ClinicProvider` with in-memory mock clinic data. Supabase Row Level Security exists for the database, but the frontend has not yet migrated doctors, appointments, prescriptions, or bills from mock state to Supabase queries.
 
 The goal of a future backend is to replace the local data service while preserving the existing screens, roles, fields, statuses, and workflow.
 
@@ -34,10 +34,10 @@ The app is configured through [vite.config.ts](vite.config.ts) and uses the `@` 
 | [src/lib/clinic/types.ts](src/lib/clinic/types.ts) | Domain types and status unions |
 | [src/lib/clinic/data.ts](src/lib/clinic/data.ts) | Seed doctors, patients, appointments, prescriptions, and invoices |
 | [src/lib/clinic/store.tsx](src/lib/clinic/store.tsx) | Current local data service and all clinic mutations |
-| [src/lib/auth/store.ts](src/lib/auth/store.ts) | In-memory simulated authentication |
+| [src/lib/auth/store.ts](src/lib/auth/store.ts) | Supabase email/password authentication, session restoration, and profile-role lookup |
 | [src/routes/__root.tsx](src/routes/__root.tsx) | Root auth guard, providers, and app shell selection |
 | [src/routes/_authenticated.tsx](src/routes/_authenticated.tsx) | Authenticated layout and role synchronization |
-| [src/components/clinic/app-shell.tsx](src/components/clinic/app-shell.tsx) | Role switcher, navigation, and sign-out |
+| [src/components/clinic/app-shell.tsx](src/components/clinic/app-shell.tsx) | Role-aware navigation, authenticated user display, and sign-out |
 | [src/routes/_authenticated](src/routes/_authenticated) | Protected dashboard and feature pages |
 | [src/routeTree.gen.ts](src/routeTree.gen.ts) | Generated route tree; do not hand-edit |
 
@@ -216,33 +216,35 @@ When creating a backend seed, preserve these IDs initially. Existing UI records 
 
 ## 5. Authentication Contract
 
-The auth store is deliberately an in-memory simulated session. It has no localStorage, sessionStorage, Zustand, Supabase, or real OAuth.
+The auth store uses Supabase Auth for email/password sessions. It restores the browser session with `getSession()`, stays synchronized through `onAuthStateChange()`, and reads the authenticated user's role from `public.profiles.role`. New-user profile creation remains the responsibility of the database trigger; the frontend never invents a profile or role.
 
 Its public API is:
 
 ```ts
 interface AuthState {
   user: User | null;
+  session: Session | null;
+  profile: Profile | null;
+  profileError: string | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: (email: string, role: Role) => Promise<void>;
-  logout: () => void;
-  signup: (email: string, name: string, role: Role) => Promise<void>;
-  setUserRole: (role: Role) => void;
+  login: (email: string, password: string) => Promise<void>;
+  logout: () => Promise<void>;
+  signup: (email: string, name: string, password: string) => Promise<Session | null>;
 }
 ```
 
-The login form is permissive for the prototype: any password is accepted, and an email/role combination resolves to a demo user or a generated demo user. A real backend must replace this with validated credentials, password hashing, rate limiting, and a secure session design.
+The login and signup forms use real Supabase email/password credentials. Signup sends `full_name` metadata for the profile trigger. Google OAuth is not implemented; its visible controls are explicitly marked as unavailable.
 
 The current route behavior is:
 
 1. [src/routes/__root.tsx](src/routes/__root.tsx) allows `/`, `/login`, and `/signup` without authentication.
-2. Other paths check `useAuth.getState().isAuthenticated`.
-3. Unauthenticated users redirect to `/login` with the requested URL.
-4. [src/routes/_authenticated.tsx](src/routes/_authenticated.tsx) performs a second authenticated-layout check.
-5. Sign out clears the in-memory user and navigates to `/`.
+2. In the browser, other paths restore and check the Supabase session before navigation.
+3. The authenticated layout resolves browser session state after hydration and redirects unauthenticated users to `/login` with the requested URL.
+4. A missing or unreadable profile displays a clear account-initialization state with a sign-out action; it never receives an invented role.
+5. Successful sign out clears the Supabase session and navigates to `/`.
 
-When adding a backend, preserve the route behavior but make the server authoritative. A client-side role switcher may remain as a demo convenience, but it must not grant access to another user’s data.
+This is a client-side session gate, not server-side authorization. Supabase RLS remains the backend security boundary. Full cookie-backed SSR auth and migration of clinic data are still pending.
 
 ## 6. Clinic State and Mutation Contract
 
@@ -299,7 +301,7 @@ There are two related role values:
 - Auth role: `useAuth().user?.role`
 - Clinic display role: `useClinic().role`
 
-The authenticated layout synchronizes the auth role into the clinic role. The role switcher in [src/components/clinic/app-shell.tsx](src/components/clinic/app-shell.tsx) updates both values, so the dashboard and sidebar change together.
+The authenticated layout synchronizes the Supabase profile role into the clinic display role. The production app shell does not expose a role switcher, so users cannot change their authenticated role through the UI.
 
 Changing the role does not recreate `ClinicProvider`; appointments, prescriptions, doctors, patients, and invoices remain in the same provider instance.
 
@@ -607,11 +609,11 @@ Return `401` for missing/invalid authentication and `403` for authenticated user
 
 ### Phase B: Authentication
 
-1. Implement login, signup, logout, and current-user endpoints.
-2. Decide cookie session versus token authentication before wiring the frontend.
+1. Email/password login, signup, logout, and current-user profile lookup are already handled by Supabase Auth in the frontend.
+2. Add cookie-backed Supabase SSR sessions when server-side authentication is required.
 3. Keep the current `User` response shape initially.
-4. Replace simulated auth only after the server contract is tested.
-5. Remove permissive password behavior before production.
+4. Migrate clinic data queries and mutations incrementally behind the existing provider boundary.
+5. Keep Google OAuth deferred until its provider configuration and callback flow are reviewed.
 
 ### Phase C: Read operations
 
@@ -776,9 +778,9 @@ The current Google button is explicitly demo-only and is not an OAuth implementa
 
 ## 18. Common Mistakes to Avoid
 
-### Trusting the selected role
+### Trusting client-side roles
 
-The role switcher is a frontend convenience, not authorization. Always derive permissions from the server session.
+The authenticated role comes from `public.profiles.role`; client-side display state is not authorization. Always derive backend permissions from the authenticated session and enforce them with RLS.
 
 ### Recreating `ClinicProvider`
 

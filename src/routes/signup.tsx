@@ -6,7 +6,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Activity, Loader2 } from "lucide-react";
 import { toast } from "sonner";
-import type { Role } from "@/lib/clinic/types";
 
 export const Route = createFileRoute("/signup")({
   component: SignupPage,
@@ -19,17 +18,29 @@ function SignupPage() {
   const [email, setEmail] = React.useState("");
   const [name, setName] = React.useState("");
   const [password, setPassword] = React.useState("");
-  const [role, setRole] = React.useState<Role>("patient");
+  const [confirmPassword, setConfirmPassword] = React.useState("");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+    if (password !== confirmPassword) {
+      toast.error("Passwords do not match.");
+      setIsLoading(false);
+      return;
+    }
     try {
-      await signup(email, name, role);
-      toast.success("Demo account created successfully. You are now signed in.");
-      navigate({ to: "/dashboard" });
+      const session = await signup(email, name, password);
+      if (session) {
+        toast.success("Account created successfully. You are now signed in.");
+        navigate({ to: "/dashboard" });
+      } else {
+        toast.success("Account created. Check your email to confirm it, then log in.");
+        navigate({ to: "/login" });
+      }
     } catch (error) {
-      toast.error("Failed to create account. Please try again.");
+      toast.error(
+        error instanceof Error ? error.message : "Failed to create account. Please try again.",
+      );
     } finally {
       setIsLoading(false);
     }
@@ -80,23 +91,24 @@ function SignupPage() {
               <Input
                 id="password"
                 type="password"
-                placeholder="Create a demo password"
+                placeholder="Create a password"
+                minLength={6}
+                required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="role">I am a</Label>
-              <select
-                id="role"
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                value={role}
-                onChange={(e) => setRole(e.target.value as Role)}
-              >
-                <option value="patient">Patient</option>
-                <option value="doctor">Doctor / Clinician</option>
-                <option value="receptionist">Receptionist / Front Desk</option>
-              </select>
+              <Label htmlFor="confirm-password">Confirm password</Label>
+              <Input
+                id="confirm-password"
+                type="password"
+                placeholder="Repeat your password"
+                minLength={6}
+                required
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+              />
             </div>
           </div>
 
@@ -109,9 +121,9 @@ function SignupPage() {
             type="button"
             variant="outline"
             className="w-full"
-            onClick={() => toast.info("Google sign-up is demo-only for this frontend prototype.")}
+            disabled
           >
-            Continue with Google
+            Google sign-up is coming soon
           </Button>
 
           <div className="text-center text-sm">

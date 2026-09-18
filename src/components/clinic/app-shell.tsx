@@ -17,17 +17,11 @@ import {
 } from "lucide-react";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { useClinic } from "@/lib/clinic/store";
 import { useAuth } from "@/lib/auth/store";
 import type { Role } from "@/lib/clinic/types";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
 type NavItem = { to: string; label: string; icon: React.ComponentType<{ className?: string }> };
 
@@ -100,50 +94,6 @@ function NavList({ onNavigate }: { onNavigate?: () => void }) {
   );
 }
 
-function RoleSwitcher() {
-  const { role, setRole, currentDoctorId, setCurrentDoctorId, doctors, currentPatient } =
-    useClinic();
-  const { setUserRole } = useAuth();
-
-  const handleRoleChange = (value: string) => {
-    const nextRole = value as Role;
-    setRole(nextRole);
-    setUserRole(nextRole);
-  };
-
-  return (
-    <div className="space-y-2">
-      <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-muted-foreground">
-        Viewing as
-      </p>
-      <Select value={role} onValueChange={handleRoleChange}>
-        <SelectTrigger className="w-full bg-card">
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="patient">Patient — {currentPatient.name}</SelectItem>
-          <SelectItem value="doctor">Doctor</SelectItem>
-          <SelectItem value="receptionist">Receptionist — Clara Morgan</SelectItem>
-        </SelectContent>
-      </Select>
-      {role === "doctor" && (
-        <Select value={currentDoctorId} onValueChange={setCurrentDoctorId}>
-          <SelectTrigger className="w-full bg-card">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {doctors.map((d) => (
-              <SelectItem key={d.id} value={d.id}>
-                {d.name} — {d.specialty}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      )}
-    </div>
-  );
-}
-
 function SignOutButton({ onSignOut }: { onSignOut: () => void }) {
   return (
     <Button variant="outline" className="w-full justify-start" onClick={onSignOut}>
@@ -154,9 +104,9 @@ function SignOutButton({ onSignOut }: { onSignOut: () => void }) {
 }
 
 function CurrentUserCard() {
-  const { role, currentDoctor, currentPatient } = useClinic();
-  const name =
-    role === "patient" ? currentPatient.name : role === "doctor" ? currentDoctor.name : "Clara Morgan";
+  const { role, currentDoctor } = useClinic();
+  const { user } = useAuth();
+  const name = user?.name ?? "CareBridge user";
   const sub =
     role === "patient"
       ? "Patient portal"
@@ -187,21 +137,23 @@ function CurrentUserCard() {
 export function AppShell({ children }: { children: React.ReactNode }) {
   const [open, setOpen] = React.useState(false);
   const navigate = useNavigate();
-  const { logout } = useAuth();
+  const { logout, completeSignOut } = useAuth();
 
-  const handleSignOut = () => {
-    logout();
-    setOpen(false);
-    navigate({ to: "/" });
+  const handleSignOut = async () => {
+    try {
+      await logout();
+      setOpen(false);
+      await navigate({ to: "/" });
+      completeSignOut();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unable to sign out. Please try again.");
+    }
   };
 
   return (
     <div className="min-h-screen bg-background">
       <aside className="fixed inset-y-0 left-0 z-30 hidden w-72 flex-col border-r border-border bg-linen/50 px-5 py-6 lg:flex">
         <Wordmark />
-        <div className="mt-7">
-          <RoleSwitcher />
-        </div>
         <div className="mt-7 flex-1 overflow-y-auto">
           <NavList />
         </div>
@@ -223,9 +175,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <SheetContent side="left" className="w-[280px] bg-linen px-5 py-6">
             <SheetTitle className="sr-only">Navigation</SheetTitle>
             <Wordmark />
-            <div className="mt-6">
-              <RoleSwitcher />
-            </div>
             <div className="mt-6">
               <NavList onNavigate={() => setOpen(false)} />
             </div>
