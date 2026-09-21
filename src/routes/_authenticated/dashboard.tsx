@@ -234,7 +234,7 @@ function DoctorDashboard() {
       <div className="grid gap-6 lg:grid-cols-2">
         <Panel title="Availability">
           <div className="flex flex-wrap gap-2">
-            {currentDoctor.days.map((d) => (
+            {currentDoctor.slots.map((d) => (
               <span
                 key={d}
                 className="rounded-full border border-border bg-sage/60 px-3 py-1 text-xs text-sage-foreground"

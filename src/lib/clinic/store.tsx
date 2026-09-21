@@ -96,6 +96,15 @@ const rowError = (operation: string, error: unknown) => {
   return `${operation} failed: ${message}`;
 };
 
+const appointmentSlotConflict = (error: unknown) => {
+  if (!error || typeof error !== "object") return false;
+  const databaseError = error as { code?: unknown; constraint?: unknown };
+  return (
+    databaseError.code === "23505" &&
+    databaseError.constraint === "appointments_active_slot_unique"
+  );
+};
+
 const fetchClinicData = async (userId: string, userRole: Role) => {
   const [profilesResult, doctorsResult, appointmentsResult, prescriptionsResult, billsResult] =
     await Promise.all([
@@ -256,7 +265,13 @@ export function ClinicProvider({ children }: { children: React.ReactNode }) {
         })
         .select()
         .single();
-      if (insertError) throw new Error(rowError("Booking appointment", insertError));
+      if (insertError) {
+        throw new Error(
+          appointmentSlotConflict(insertError)
+            ? "This time slot was just booked by another patient. Please choose another slot."
+            : rowError("Booking appointment", insertError),
+        );
+      }
       setAppointments((items) => [mapAppointment(data as Row), ...items]);
     },
 
@@ -407,7 +422,7 @@ export function ClinicProvider({ children }: { children: React.ReactNode }) {
           appointment.doctorId === doctorId &&
           appointment.date === date &&
           appointment.slot === slot &&
-          (appointment.status === "Requested" || appointment.status === "Confirmed"),
+          appointment.status !== "Cancelled",
       ),
   };
 
