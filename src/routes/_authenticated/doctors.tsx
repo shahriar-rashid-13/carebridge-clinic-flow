@@ -53,13 +53,38 @@ const emptyDoctor = (): Doctor => ({
 });
 
 function DoctorsPage() {
-  const { role, doctors, appointments, toggleDoctorActive, upsertDoctor } = useClinic();
+  const { role, doctors, patients, appointments, toggleDoctorActive, upsertDoctor, promotePatientToDoctor } = useClinic();
   const [editing, setEditing] = React.useState<Doctor | null>(null);
   const [rawSlots, setRawSlots] = React.useState("");
+  const [isAdding, setIsAdding] = React.useState(false);
+  const [patientQuery, setPatientQuery] = React.useState("");
+  const [selectedPatientId, setSelectedPatientId] = React.useState("");
+  const [isSaving, setIsSaving] = React.useState(false);
 
   const openDoctorEditor = (doctor: Doctor) => {
+    setIsAdding(false);
     setEditing({ ...doctor });
     setRawSlots(doctor.slots.join(", "));
+  };
+
+  const openAddDoctor = () => {
+    setIsAdding(true);
+    setPatientQuery("");
+    setSelectedPatientId("");
+    setEditing(emptyDoctor());
+    setRawSlots(emptyDoctor().slots.join(", "));
+  };
+
+  const selectedPatient = patients.find((patient) => patient.id === selectedPatientId);
+  const matchingPatients = patients.filter((patient) => {
+    const query = patientQuery.trim().toLowerCase();
+    return !query || [patient.name, patient.email, patient.phone].some((value) => value.toLowerCase().includes(query));
+  });
+
+  const closeEditor = () => {
+    if (isSaving) return;
+    setEditing(null);
+    setIsAdding(false);
   };
 
   if (role !== "receptionist") {
@@ -78,7 +103,7 @@ function DoctorsPage() {
         title="Manage doctors"
         description="Working days, slots, fees and booking availability."
         actions={
-          <Button onClick={() => openDoctorEditor(emptyDoctor())}>
+          <Button onClick={openAddDoctor}>
             <Plus className="size-4" /> Add doctor
           </Button>
         }
@@ -148,16 +173,57 @@ function DoctorsPage() {
         ))}
       </div>
 
-      <Dialog open={!!editing} onOpenChange={(o) => !o && setEditing(null)}>
+      <Dialog open={!!editing} onOpenChange={(o) => !o && closeEditor()}>
         <DialogContent className="max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{editing?.name ? "Edit doctor" : "Add doctor"}</DialogTitle>
-            <DialogDescription>Set the roster, slots and consultation fee.</DialogDescription>
+            <DialogTitle>{isAdding ? "Add doctor" : "Edit doctor"}</DialogTitle>
+            <DialogDescription>
+              {isAdding ? "Select an existing patient, then set their doctor roster." : "Set the roster, slots and consultation fee."}
+            </DialogDescription>
           </DialogHeader>
           {editing && (
             <div className="space-y-4">
+              {isAdding && (
+                <div className="rounded-lg border border-border bg-muted/30 p-3">
+                  <Label className="text-xs">Existing patient</Label>
+                  {selectedPatient ? (
+                    <div className="mt-2 flex items-center justify-between gap-3 rounded-md bg-card p-3">
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-medium">{selectedPatient.name}</p>
+                        <p className="truncate text-xs text-muted-foreground">{selectedPatient.email || "No email on profile"}</p>
+                      </div>
+                      <Button type="button" variant="outline" size="sm" onClick={() => setSelectedPatientId("")} disabled={isSaving}>
+                        Change
+                      </Button>
+                    </div>
+                  ) : (
+                    <>
+                      <Input
+                        value={patientQuery}
+                        onChange={(e) => setPatientQuery(e.target.value)}
+                        placeholder="Search by name, email, or phone"
+                        className="mt-1.5"
+                      />
+                      <div className="mt-2 max-h-40 space-y-1 overflow-y-auto">
+                        {matchingPatients.map((patient) => (
+                          <button
+                            key={patient.id}
+                            type="button"
+                            className="flex w-full items-center justify-between gap-3 rounded-md px-2 py-2 text-left text-sm hover:bg-card"
+                            onClick={() => setSelectedPatientId(patient.id)}
+                          >
+                            <span className="min-w-0"><span className="block truncate font-medium">{patient.name}</span><span className="block truncate text-xs text-muted-foreground">{patient.email || patient.phone || "No contact details"}</span></span>
+                            <span className="text-xs text-muted-foreground">Select</span>
+                          </button>
+                        ))}
+                        {matchingPatients.length === 0 && <p className="px-2 py-3 text-sm text-muted-foreground">No active patients match that search.</p>}
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
               <div className="grid gap-4 sm:grid-cols-2">
-                <div>
+                {!isAdding && <div>
                   <Label className="text-xs">Name</Label>
                   <Input
                     value={editing.name}
@@ -165,7 +231,7 @@ function DoctorsPage() {
                     placeholder="Dr. Jane Doe"
                     className="mt-1.5"
                   />
-                </div>
+                </div>}
                 <div>
                   <Label className="text-xs">Specialty</Label>
                   <Input
@@ -194,6 +260,15 @@ function DoctorsPage() {
                   />
                 </div>
               </div>
+              {isAdding && (
+                <div className="flex items-center justify-between rounded-lg border border-border px-3 py-2">
+                  <div>
+                    <Label htmlFor="new-doctor-active" className="text-sm">Bookable immediately</Label>
+                    <p className="text-xs text-muted-foreground">Controls whether patients can book this doctor now.</p>
+                  </div>
+                  <Switch id="new-doctor-active" checked={editing.active} onCheckedChange={(active) => setEditing({ ...editing, active })} />
+                </div>
+              )}
               <div>
                 <Label className="text-xs">Working days</Label>
                 <div className="mt-2 flex flex-wrap gap-2">
@@ -241,32 +316,62 @@ function DoctorsPage() {
             </div>
           )}
           <DialogFooter>
-            <Button variant="outline" onClick={() => setEditing(null)}>
+            <Button variant="outline" onClick={closeEditor} disabled={isSaving}>
               Cancel
             </Button>
             <Button
               onClick={async () => {
                 if (!editing) return;
-                if (!editing.name.trim() || !editing.specialty.trim()) {
-                  toast.error("Name and specialty are required.");
+                const slots = rawSlots.split(",").map((slot) => slot.trim()).filter(Boolean);
+                if (!editing.specialty.trim()) {
+                  toast.error("Specialty is required.");
+                  return;
+                }
+                if (!Number.isFinite(editing.fee) || editing.fee <= 0) {
+                  toast.error("Consultation fee must be greater than zero.");
+                  return;
+                }
+                if (editing.days.length === 0 || slots.length === 0) {
+                  toast.error("Choose at least one working day and time slot.");
+                  return;
+                }
+                if (isAdding && !selectedPatient) {
+                  toast.error("Select an existing patient to promote.");
+                  return;
+                }
+                if (!isAdding && !editing.name.trim()) {
+                  toast.error("Name is required.");
                   return;
                 }
                 try {
-                  await upsertDoctor({
-                    ...editing,
-                    slots: rawSlots
-                      .split(",")
-                      .map((slot) => slot.trim())
-                      .filter(Boolean),
-                  });
-                  toast.success("Doctor schedule saved");
+                  setIsSaving(true);
+                  if (isAdding && selectedPatient) {
+                    await promotePatientToDoctor({
+                      profileId: selectedPatient.id,
+                      specialization: editing.specialty,
+                      consultationFee: editing.fee,
+                      availableDays: editing.days,
+                      slots,
+                      active: editing.active,
+                      bio: editing.bio,
+                      room: editing.room,
+                    });
+                    toast.success(`${selectedPatient.name} is now a doctor.`);
+                  } else {
+                    await upsertDoctor({ ...editing, slots });
+                    toast.success("Doctor schedule saved");
+                  }
                   setEditing(null);
+                  setIsAdding(false);
                 } catch (error) {
                   toast.error(error instanceof Error ? error.message : "Could not save doctor schedule.");
+                } finally {
+                  setIsSaving(false);
                 }
               }}
+              disabled={isSaving}
             >
-              Save doctor
+              {isSaving ? "Saving…" : "Save doctor"}
             </Button>
           </DialogFooter>
         </DialogContent>

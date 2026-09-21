@@ -14,6 +14,17 @@ export interface Doctor {
   room: string;
 }
 
+export interface PromotePatientToDoctorInput {
+  profileId: string;
+  specialization: string;
+  consultationFee: number;
+  availableDays: string[];
+  slots: string[];
+  active: boolean;
+  bio: string;
+  room: string;
+}
+
 export interface EmergencyContact {
   name: string;
   relation: string;
