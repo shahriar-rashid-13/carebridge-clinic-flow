@@ -47,6 +47,7 @@ export interface AuthState {
   loading: boolean;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
+  loginWithGoogle: (redirectTo?: string) => Promise<void>;
   logout: () => Promise<void>;
   completeSignOut: () => void;
   signup: (email: string, name: string, password: string) => Promise<Session | null>;
@@ -78,6 +79,7 @@ const getProfile = async (supabaseUser: SupabaseUser): Promise<Profile> => {
     .single();
 
   if (error) throw error;
+
   if (!data || !isRole(data.role)) {
     throw new Error("Your account profile is missing a valid clinic role.");
   }
@@ -86,10 +88,13 @@ const getProfile = async (supabaseUser: SupabaseUser): Promise<Profile> => {
 };
 
 const errorMessage = (error: unknown) =>
-  error instanceof Error ? error.message : "We could not initialize your clinic profile.";
+  error instanceof Error
+    ? error.message
+    : "We could not initialize your clinic profile.";
 
 const syncSession = async (session: Session | null) => {
   const version = ++sessionSyncVersion;
+
   if (!session?.user) {
     setAuthState({
       ...authState,
@@ -106,7 +111,9 @@ const syncSession = async (session: Session | null) => {
 
   try {
     const profile = await getProfile(session.user);
+
     if (version !== sessionSyncVersion) return;
+
     setAuthState({
       ...authState,
       user: {
@@ -124,6 +131,7 @@ const syncSession = async (session: Session | null) => {
     });
   } catch (error) {
     if (version !== sessionSyncVersion) return;
+
     setAuthState({
       ...authState,
       user: null,
@@ -134,6 +142,7 @@ const syncSession = async (session: Session | null) => {
       loading: false,
       isLoading: false,
     });
+
     throw error;
   }
 };
@@ -143,7 +152,9 @@ export const initializeAuth = async () => {
 
   initializationPromise = (async () => {
     const { data, error } = await supabase.auth.getSession();
+
     if (error) throw error;
+
     try {
       await syncSession(data.session);
     } catch {
@@ -164,6 +175,7 @@ export const initializeAuth = async () => {
       loading: false,
       isLoading: false,
     });
+
     initializationPromise = null;
     return error;
   });
@@ -172,46 +184,126 @@ export const initializeAuth = async () => {
 };
 
 const login = async (email: string, password: string) => {
-  setAuthState({ ...authState, profileError: null, loading: true, isLoading: true });
+  setAuthState({
+    ...authState,
+    profileError: null,
+    loading: true,
+    isLoading: true,
+  });
+
   const { data, error } = await supabase.auth.signInWithPassword({
     email: email.trim(),
     password,
   });
+
   if (error) {
-    setAuthState({ ...authState, loading: false, isLoading: false });
+    setAuthState({
+      ...authState,
+      loading: false,
+      isLoading: false,
+    });
+
     throw error;
   }
+
   await syncSession(data.session);
 };
 
+const loginWithGoogle = async (redirectTo = "/dashboard") => {
+  setAuthState({
+    ...authState,
+    profileError: null,
+    loading: true,
+    isLoading: true,
+  });
+
+  const { error } = await supabase.auth.signInWithOAuth({
+    provider: "google",
+    options: {
+      redirectTo: `${window.location.origin}${redirectTo}`,
+    },
+  });
+
+  if (error) {
+    setAuthState({
+      ...authState,
+      loading: false,
+      isLoading: false,
+    });
+
+    throw error;
+  }
+
+  // signInWithOAuth redirects the browser to Google.
+  // There is normally no further code execution here before navigation.
+};
+
 const signup = async (email: string, name: string, password: string) => {
-  setAuthState({ ...authState, profileError: null, loading: true, isLoading: true });
+  setAuthState({
+    ...authState,
+    profileError: null,
+    loading: true,
+    isLoading: true,
+  });
+
   const { data, error } = await supabase.auth.signUp({
     email: email.trim(),
     password,
-    options: { data: { full_name: name.trim() } },
+    options: {
+      data: {
+        full_name: name.trim(),
+      },
+    },
   });
+
   if (error) {
-    setAuthState({ ...authState, loading: false, isLoading: false });
+    setAuthState({
+      ...authState,
+      loading: false,
+      isLoading: false,
+    });
+
     throw error;
   }
-  if (data.session) await syncSession(data.session);
-  else setAuthState({ ...authState, loading: false, isLoading: false });
+
+  if (data.session) {
+    await syncSession(data.session);
+  } else {
+    setAuthState({
+      ...authState,
+      loading: false,
+      isLoading: false,
+    });
+  }
+
   return data.session;
 };
 
 const logout = async () => {
-  setAuthState({ ...authState, isSigningOut: true });
+  setAuthState({
+    ...authState,
+    isSigningOut: true,
+  });
+
   const { error } = await supabase.auth.signOut();
+
   if (error) {
-    setAuthState({ ...authState, isSigningOut: false });
+    setAuthState({
+      ...authState,
+      isSigningOut: false,
+    });
+
     throw error;
   }
+
   await syncSession(null);
 };
 
 const completeSignOut = () => {
-  setAuthState({ ...authState, isSigningOut: false });
+  setAuthState({
+    ...authState,
+    isSigningOut: false,
+  });
 };
 
 authState = {
@@ -224,6 +316,7 @@ authState = {
   loading: true,
   isLoading: true,
   login,
+  loginWithGoogle,
   logout,
   completeSignOut,
   signup,
@@ -231,6 +324,7 @@ authState = {
 
 const subscribe = (listener: Listener) => {
   listeners.add(listener);
+
   return () => listeners.delete(listener);
 };
 

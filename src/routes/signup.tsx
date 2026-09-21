@@ -1,5 +1,9 @@
 import * as React from "react";
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import {
+  createFileRoute,
+  Link,
+  useNavigate,
+} from "@tanstack/react-router";
 import { useAuth } from "@/lib/auth/store";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,8 +16,9 @@ export const Route = createFileRoute("/signup")({
 });
 
 function SignupPage() {
-  const { signup } = useAuth();
+  const { signup, loginWithGoogle } = useAuth();
   const navigate = useNavigate();
+
   const [isLoading, setIsLoading] = React.useState(false);
   const [email, setEmail] = React.useState("");
   const [name, setName] = React.useState("");
@@ -22,27 +27,55 @@ function SignupPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
     setIsLoading(true);
+
     if (password !== confirmPassword) {
       toast.error("Passwords do not match.");
       setIsLoading(false);
       return;
     }
+
     try {
       const session = await signup(email, name, password);
+
       if (session) {
-        toast.success("Account created successfully. You are now signed in.");
+        toast.success(
+          "Account created successfully. You are now signed in.",
+        );
+
         navigate({ to: "/dashboard" });
       } else {
-        toast.success("Account created. Check your email to confirm it, then log in.");
+        toast.success(
+          "Account created. Check your email to confirm it, then log in.",
+        );
+
         navigate({ to: "/login" });
       }
     } catch (error) {
       toast.error(
-        error instanceof Error ? error.message : "Failed to create account. Please try again.",
+        error instanceof Error
+          ? error.message
+          : "Failed to create account. Please try again.",
       );
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleGoogleSignup = async () => {
+    setIsLoading(true);
+
+    try {
+      await loginWithGoogle("/dashboard");
+    } catch (error) {
+      setIsLoading(false);
+
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Failed to continue with Google. Please try again.",
+      );
     }
   };
 
@@ -54,9 +87,16 @@ function SignupPage() {
             <div className="grid size-10 place-items-center rounded-lg bg-primary text-primary-foreground">
               <Activity className="size-6" />
             </div>
-            <span className="font-display text-2xl font-bold">CareBridge</span>
+
+            <span className="font-display text-2xl font-bold">
+              CareBridge
+            </span>
           </Link>
-          <h2 className="mt-6 text-3xl font-bold tracking-tight">Create your account</h2>
+
+          <h2 className="mt-6 text-3xl font-bold tracking-tight">
+            Create your account
+          </h2>
+
           <p className="mt-2 text-sm text-muted-foreground">
             Join thousands of clinics delivering better care
           </p>
@@ -66,6 +106,7 @@ function SignupPage() {
           <div className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="name">Full Name</Label>
+
               <Input
                 id="name"
                 type="text"
@@ -75,8 +116,10 @@ function SignupPage() {
                 onChange={(e) => setName(e.target.value)}
               />
             </div>
+
             <div className="space-y-2">
               <Label htmlFor="email">Email address</Label>
+
               <Input
                 id="email"
                 type="email"
@@ -86,8 +129,10 @@ function SignupPage() {
                 onChange={(e) => setEmail(e.target.value)}
               />
             </div>
+
             <div className="space-y-2">
               <Label htmlFor="password">Password</Label>
+
               <Input
                 id="password"
                 type="password"
@@ -98,8 +143,12 @@ function SignupPage() {
                 onChange={(e) => setPassword(e.target.value)}
               />
             </div>
+
             <div className="space-y-2">
-              <Label htmlFor="confirm-password">Confirm password</Label>
+              <Label htmlFor="confirm-password">
+                Confirm password
+              </Label>
+
               <Input
                 id="confirm-password"
                 type="password"
@@ -112,8 +161,15 @@ function SignupPage() {
             </div>
           </div>
 
-          <Button type="submit" className="w-full" disabled={isLoading}>
-            {isLoading ? <Loader2 className="mr-2 size-4 animate-spin" /> : null}
+          <Button
+            type="submit"
+            className="w-full"
+            disabled={isLoading}
+          >
+            {isLoading ? (
+              <Loader2 className="mr-2 size-4 animate-spin" />
+            ) : null}
+
             Create Account
           </Button>
 
@@ -121,14 +177,22 @@ function SignupPage() {
             type="button"
             variant="outline"
             className="w-full"
-            disabled
+            disabled={isLoading}
+            onClick={handleGoogleSignup}
           >
-            Google sign-up is coming soon
+            {isLoading ? (
+              <Loader2 className="mr-2 size-4 animate-spin" />
+            ) : null}
+
+            Continue with Google
           </Button>
 
           <div className="text-center text-sm">
             Already have an account?{" "}
-            <Link to="/login" className="font-medium text-primary hover:underline">
+            <Link
+              to="/login"
+              className="font-medium text-primary hover:underline"
+            >
               Log in instead
             </Link>
           </div>
