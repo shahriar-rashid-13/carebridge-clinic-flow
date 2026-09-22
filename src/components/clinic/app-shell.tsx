@@ -11,6 +11,7 @@ import {
   LogOut,
   Menu,
   PieChart,
+  Sparkles,
   Stethoscope,
   User,
   Users,
@@ -32,12 +33,14 @@ const NAV: Record<Role, NavItem[]> = {
     { to: "/appointments", label: "My Appointments", icon: CalendarDays },
     { to: "/prescriptions", label: "My Prescriptions", icon: FileText },
     { to: "/profile", label: "My Profile", icon: User },
+    { to: "/ai", label: "CareBridge AI", icon: Sparkles },
   ],
   doctor: [
     { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
     { to: "/schedule", label: "My Schedule", icon: CalendarDays },
     { to: "/appointments", label: "My Appointments", icon: ClipboardList },
     { to: "/records", label: "Patient Records", icon: Users },
+    { to: "/ai", label: "CareBridge AI", icon: Sparkles },
   ],
   receptionist: [
     { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -46,6 +49,7 @@ const NAV: Record<Role, NavItem[]> = {
     { to: "/patients", label: "Patients", icon: Users },
     { to: "/billing", label: "Billing", icon: CreditCard },
     { to: "/reports", label: "Reports", icon: PieChart },
+    { to: "/ai", label: "CareBridge AI", icon: Sparkles },
   ],
 };
 
