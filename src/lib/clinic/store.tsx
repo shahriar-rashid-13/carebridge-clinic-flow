@@ -98,6 +98,10 @@ interface ClinicState {
     input: PromotePatientToDoctorInput,
   ) => Promise<void>;
 
+  promotePatientToReceptionist: (
+    profileId: string,
+  ) => Promise<void>;
+
   toggleDoctorActive: (id: string) => Promise<void>;
 
   createInvoice: (
@@ -991,6 +995,38 @@ export function ClinicProvider({
               patient.id !==
               input.profileId,
           ),
+        );
+      },
+
+    promotePatientToReceptionist:
+      async (profileId) => {
+        const {
+          data,
+          error: promotionError,
+        } = await supabase.rpc(
+          "promote_patient_to_receptionist",
+          {
+            p_target_profile_id: profileId,
+          },
+        );
+
+        if (promotionError) {
+          throw new Error(
+            rowError(
+              "Promoting patient to receptionist",
+              promotionError,
+            ),
+          );
+        }
+
+        if (!data || typeof data !== "object") {
+          throw new Error(
+            "Promoting patient to receptionist failed: the database did not return the updated profile.",
+          );
+        }
+
+        setPatients((items) =>
+          items.filter((patient) => patient.id !== profileId),
         );
       },
 

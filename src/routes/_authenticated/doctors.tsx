@@ -15,11 +15,21 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription as AlertDialogDescriptionText,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { PageHeader, Panel } from "@/components/clinic/page";
 import { StatusBadge } from "@/components/clinic/status-badge";
 import { newDoctorId, useClinic } from "@/lib/clinic/store";
 import { money } from "@/lib/clinic/data";
-import { WEEKDAYS, type Doctor } from "@/lib/clinic/types";
+import { WEEKDAYS, type Doctor, type Patient } from "@/lib/clinic/types";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/doctors")({
@@ -53,13 +63,15 @@ const emptyDoctor = (): Doctor => ({
 });
 
 function DoctorsPage() {
-  const { role, doctors, patients, appointments, toggleDoctorActive, upsertDoctor, promotePatientToDoctor } = useClinic();
+  const { role, doctors, patients, appointments, toggleDoctorActive, upsertDoctor, promotePatientToDoctor, promotePatientToReceptionist } = useClinic();
   const [editing, setEditing] = React.useState<Doctor | null>(null);
   const [rawSlots, setRawSlots] = React.useState("");
   const [isAdding, setIsAdding] = React.useState(false);
   const [patientQuery, setPatientQuery] = React.useState("");
   const [selectedPatientId, setSelectedPatientId] = React.useState("");
   const [isSaving, setIsSaving] = React.useState(false);
+  const [receptionPromotion, setReceptionPromotion] = React.useState<Patient | null>(null);
+  const [isPromotingReceptionist, setIsPromotingReceptionist] = React.useState(false);
 
   const openDoctorEditor = (doctor: Doctor) => {
     setIsAdding(false);
@@ -172,6 +184,56 @@ function DoctorsPage() {
           </Panel>
         ))}
       </div>
+
+      <Panel title="Receptionists" description="Promote an existing patient account to receptionist access. Their account and historical records remain unchanged.">
+        {patients.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No patient accounts are available to promote.</p>
+        ) : (
+          <ul className="divide-y divide-border">
+            {patients.map((patient) => (
+              <li key={patient.id} className="flex flex-wrap items-center gap-3 py-3 first:pt-0 last:pb-0">
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-medium">{patient.name}</p>
+                  <p className="truncate text-xs text-muted-foreground">{patient.email || patient.phone || "No contact details"}</p>
+                </div>
+                <Button variant="outline" size="sm" onClick={() => setReceptionPromotion(patient)} disabled={isPromotingReceptionist}>
+                  Promote to Receptionist
+                </Button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </Panel>
+
+      <AlertDialog open={!!receptionPromotion} onOpenChange={(open) => !open && !isPromotingReceptionist && setReceptionPromotion(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Promote to receptionist?</AlertDialogTitle>
+            <AlertDialogDescriptionText>
+              {receptionPromotion ? `${receptionPromotion.name}'s existing account will become a receptionist account. Their profile ID, login, and historical records will remain unchanged.` : ""}
+            </AlertDialogDescriptionText>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isPromotingReceptionist}>Cancel</AlertDialogCancel>
+            <AlertDialogAction disabled={isPromotingReceptionist} onClick={async (event) => {
+              event.preventDefault();
+              if (!receptionPromotion) return;
+              try {
+                setIsPromotingReceptionist(true);
+                await promotePatientToReceptionist(receptionPromotion.id);
+                toast.success(`${receptionPromotion.name} is now a receptionist.`);
+                setReceptionPromotion(null);
+              } catch (error) {
+                toast.error(error instanceof Error ? error.message : "Could not promote the patient to receptionist.");
+              } finally {
+                setIsPromotingReceptionist(false);
+              }
+            }}>
+              {isPromotingReceptionist ? "Promoting…" : "Promote to Receptionist"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <Dialog open={!!editing} onOpenChange={(o) => !o && closeEditor()}>
         <DialogContent className="max-h-[90vh] overflow-y-auto">
