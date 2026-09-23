@@ -45,7 +45,7 @@ function LandingPage() {
 
           <div className="flex items-center gap-2">
             <Button variant="ghost" className="h-10 border border-[#d7ddd8] bg-transparent" asChild>
-              <Link to="/login">Log in</Link>
+              <Link to="/login" search={{ redirect: "/dashboard" }}>Log in</Link>
             </Button>
             <Button className="h-10 bg-[#163a32] text-white hover:bg-[#0e2b25]" asChild>
               <Link to="/signup">
@@ -69,7 +69,7 @@ function LandingPage() {
               </p>
               <div className="mt-8 flex flex-wrap gap-3">
                 <Button size="lg" className="h-12 bg-[#163a32] px-6 text-base hover:bg-[#0e2b25]" asChild>
-                  <Link to="/login">
+                  <Link to="/login" search={{ redirect: "/dashboard" }}>
                     Book an appointment <ArrowRight className="ml-2 size-4" />
                   </Link>
                 </Button>

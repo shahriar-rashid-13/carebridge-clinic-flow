@@ -50,7 +50,7 @@ function SignupPage() {
           "Account created. Check your email to confirm it, then log in.",
         );
 
-        navigate({ to: "/login" });
+        navigate({ to: "/login", search: { redirect: "/dashboard" } });
       }
     } catch (error) {
       toast.error(
@@ -191,6 +191,7 @@ function SignupPage() {
             Already have an account?{" "}
             <Link
               to="/login"
+              search={{ redirect: "/dashboard" }}
               className="font-medium text-primary hover:underline"
             >
               Log in instead

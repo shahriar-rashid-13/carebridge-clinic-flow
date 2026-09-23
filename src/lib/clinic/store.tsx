@@ -16,6 +16,7 @@ import type {
   InvoiceItem,
   Medication,
   Patient,
+  Prescription,
   PromotePatientToDoctorInput,
   Role,
 } from "./types";
@@ -245,7 +246,7 @@ const fetchClinicData = async (
 
   const profileById = new Map(
     profiles.map((profile) => [
-      String(profile.id),
+      String(profile["id"]),
       profile,
     ]),
   );
@@ -256,8 +257,8 @@ const fetchClinicData = async (
   const doctors = doctorRows.map((doctor) =>
     mapDoctor(
       doctor,
-      (doctor.profile as Row | null | undefined) ??
-        profileById.get(String(doctor.user_id)),
+      (doctor["profile"] as Row | null | undefined) ??
+        profileById.get(String(doctor["user_id"])),
     ),
   );
 
@@ -268,7 +269,7 @@ const fetchClinicData = async (
 
     patients: profiles
       .filter(
-        (profile) => profile.role === "patient",
+        (profile) => profile["role"] === "patient",
       )
       .map(mapProfileToPatient),
 
@@ -287,13 +288,13 @@ const fetchClinicData = async (
         (appointmentsResult.data ?? []) as Row[]
       ).find(
         (item) =>
-          String(item.id) ===
-          String(bill.appointment_id),
+          String(item["id"]) ===
+          String(bill["appointment_id"]),
       );
 
       return mapInvoice({
         ...bill,
-        doctor_id: appointment?.doctor_id,
+        doctor_id: appointment?.["doctor_id"],
       });
     }),
 
@@ -302,8 +303,8 @@ const fetchClinicData = async (
         ? String(
             doctorRows.find(
               (doctor) =>
-                String(doctor.user_id) === userId,
-            )?.id ?? "",
+                String(doctor["user_id"]) === userId,
+            )?.["id"] ?? "",
           )
         : "",
   };
@@ -882,7 +883,7 @@ export function ClinicProvider({
       }
 
       const userId =
-        (data as Row).user_id;
+        (data as Row)["user_id"];
 
       if (
         userId &&
