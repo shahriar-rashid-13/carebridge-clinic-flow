@@ -48,7 +48,7 @@ function AuthenticatedLayout() {
             onClick={async () => {
               try {
                 await logout();
-                await navigate({ to: "/login" });
+                await navigate({ to: "/login", search: { redirect: "/dashboard" } });
                 completeSignOut();
               } catch (error) {
                 toast.error(
