@@ -21,7 +21,17 @@ export const Route = createFileRoute("/_authenticated/reports")({
   component: ReportsPage,
 });
 
-function Bar({ label, value, max, hint }: { label: string; value: number; max: number; hint?: string }) {
+function Bar({
+  label,
+  value,
+  max,
+  hint,
+}: {
+  label: string;
+  value: number;
+  max: number;
+  hint?: string;
+}) {
   return (
     <div>
       <div className="flex items-baseline justify-between gap-3 text-sm">

@@ -92,8 +92,10 @@ function PatientsPage() {
                       <td className="py-3 text-muted-foreground">{prettyDate(p.dob)}</td>
                       <td className="py-3">{all.length}</td>
                       <td className="py-3 text-muted-foreground">
-                        {all.filter((a) => a.status === "Confirmed" || a.status === "Requested")
-                          .length}
+                        {
+                          all.filter((a) => a.status === "Confirmed" || a.status === "Requested")
+                            .length
+                        }
                       </td>
                     </tr>
                   );

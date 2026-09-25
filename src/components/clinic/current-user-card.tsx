@@ -12,7 +12,7 @@ const ROLE_LABEL: Record<string, string> = {
 export function CurrentUserCard() {
   const { user, logout } = useAuth();
   const { role, currentDoctor, currentPatient } = useClinic();
-  
+
   if (!user) return null;
 
   const name = user.name;
@@ -22,7 +22,7 @@ export function CurrentUserCard() {
       : role === "doctor"
         ? currentDoctor.specialty
         : "Front desk";
-        
+
   const initials = name
     .replace("Dr. ", "")
     .split(" ")
@@ -43,9 +43,9 @@ export function CurrentUserCard() {
           </p>
         </div>
       </div>
-      <Button 
-        variant="ghost" 
-        size="sm" 
+      <Button
+        variant="ghost"
+        size="sm"
         className="mt-1 h-8 w-full justify-start gap-2 px-2 text-xs text-muted-foreground hover:text-destructive"
         onClick={() => logout()}
       >

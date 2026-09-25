@@ -14,6 +14,7 @@ import { useEffect, type ReactNode } from "react";
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { ClinicProvider } from "@/lib/clinic/store";
+import { ThemeProvider } from "@/lib/theme/theme-context";
 import { AppShell } from "@/components/clinic/app-shell";
 import { Toaster } from "@/components/ui/sonner";
 import { initializeAuth, useAuth } from "@/lib/auth/store";
@@ -157,16 +158,18 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <ClinicProvider>
-        {isPublicLayout ? (
-          <Outlet />
-        ) : (
-          <AppShell>
+      <ThemeProvider>
+        <ClinicProvider>
+          {isPublicLayout ? (
             <Outlet />
-          </AppShell>
-        )}
-        <Toaster position="top-right" />
-      </ClinicProvider>
+          ) : (
+            <AppShell>
+              <Outlet />
+            </AppShell>
+          )}
+          <Toaster position="top-right" />
+        </ClinicProvider>
+      </ThemeProvider>
     </QueryClientProvider>
   );
 }

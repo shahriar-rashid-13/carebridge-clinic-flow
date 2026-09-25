@@ -4,11 +4,11 @@
 
 **Vibe-coding assignment — Lovable + Supabase + GitHub + Vercel**
 
-| | |
-|---|---|
-| **Intern** | Shariar Rashid (Dhaka) |
-| **Mentor** | Amol — Tech Manager |
-| **Issued** | Tuesday, 16 September 2026 |
+|              |                                                            |
+| ------------ | ---------------------------------------------------------- |
+| **Intern**   | Shariar Rashid (Dhaka)                                     |
+| **Mentor**   | Amol — Tech Manager                                        |
+| **Issued**   | Tuesday, 16 September 2026                                 |
 | **Demo due** | **Wednesday, 23 September 2026** (live demo, screen-share) |
 
 **Your mission this week:** Build the system a small clinic uses to run appointments. A **Patient** books an appointment with a doctor, a **Receptionist** confirms and schedules it and handles billing, and a **Doctor** sees their day's appointments, records notes and writes a prescription the patient can view. Use only **made-up test data** — never real patient information.
@@ -41,12 +41,12 @@ This project is not just about "building an app". By the end you should be able 
 
 Use the shared **SG Notion email ID** (free) for Lovable, Supabase and GitHub. Use **your own account** for Vercel. Set all of this up on **Day 1**.
 
-| Tool | Account to use | What to do |
-|---|---|---|
-| **Lovable** | SG Notion email (free plan) | Sign up at lovable.dev . The free plan gives roughly **5 credits per day** that reset daily, and projects are public — that is fine for this assignment. |
-| **Supabase** | SG Notion email (free) | Sign up at supabase.com , create one new project, and note the **Project URL** and **anon key** (Project Settings → API). |
-| **GitHub** | SG Notion email | Create/sign in to the GitHub account. In Lovable, connect GitHub so your project can be pushed to a repo. |
-| **Vercel** | Your own account | Sign up at vercel.com — you can log in with your GitHub account so it can read your repo. |
+| Tool         | Account to use              | What to do                                                                                                                                               |
+| ------------ | --------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Lovable**  | SG Notion email (free plan) | Sign up at lovable.dev . The free plan gives roughly **5 credits per day** that reset daily, and projects are public — that is fine for this assignment. |
+| **Supabase** | SG Notion email (free)      | Sign up at supabase.com , create one new project, and note the **Project URL** and **anon key** (Project Settings → API).                                |
+| **GitHub**   | SG Notion email             | Create/sign in to the GitHub account. In Lovable, connect GitHub so your project can be pushed to a repo.                                                |
+| **Vercel**   | Your own account            | Sign up at vercel.com — you can log in with your GitHub account so it can read your repo.                                                                |
 
 **Connect Lovable to Supabase (do this once):** In the Lovable editor open **More → Cloud** (or the Supabase icon), choose "Connect Supabase", authorise it, and select the Supabase project you created. After this, when you ask Lovable to store data it will create the tables inside your Supabase project and show you the SQL migration to approve before it runs.
 
@@ -56,10 +56,10 @@ Use the shared **SG Notion email ID** (free) for Lovable, Supabase and GitHub. U
 
 Every logged-in user has exactly one role. The role decides what they can see and do.
 
-| Role | Access level |
-|---|---|
-| **Patient** | Books appointments; sees only their own appointments & prescriptions. |
-| **Doctor** | Sees their own schedule & patients; writes prescriptions and notes. |
+| Role             | Access level                                                                   |
+| ---------------- | ------------------------------------------------------------------------------ |
+| **Patient**      | Books appointments; sees only their own appointments & prescriptions.          |
+| **Doctor**       | Sees their own schedule & patients; writes prescriptions and notes.            |
 | **Receptionist** | Manages doctors, confirms/reschedules appointments, handles billing; sees all. |
 
 ---
@@ -68,10 +68,10 @@ Every logged-in user has exactly one role. The role decides what they can see an
 
 After login, each role must see a different left-hand sidebar. This is the most visible sign that role-based access works.
 
-| Role | Left sidebar menu items |
-|---|---|
-| **Patient** | Book Appointment, My Appointments, My Prescriptions, My Profile |
-| **Doctor** | Doctor Dashboard, My Schedule, My Appointments, Patient Records, Write Prescription |
+| Role             | Left sidebar menu items                                                                            |
+| ---------------- | -------------------------------------------------------------------------------------------------- |
+| **Patient**      | Book Appointment, My Appointments, My Prescriptions, My Profile                                    |
+| **Doctor**       | Doctor Dashboard, My Schedule, My Appointments, Patient Records, Write Prescription                |
 | **Receptionist** | Reception Dashboard, Manage Doctors, Appointments (confirm/reschedule), Patients, Billing, Reports |
 
 ---
@@ -94,13 +94,13 @@ The whole point is that the three roles hand work to each other. Build this end-
 
 Create these tables in your Supabase project. Follow the naming standards below.
 
-| Table | Columns | Purpose |
-|---|---|---|
-| **profiles** | id (uuid, = auth user), full_name, email, role (patient / doctor / receptionist), phone, gender, date_of_birth, created_at | One row per user; holds the role. |
-| **doctors** | id, user_id → profiles, specialization, consultation_fee (numeric), available_days, status (active / inactive) | Extra info for doctor users. |
-| **appointments** | id, patient_id → profiles, doctor_id → doctors, appointment_date, time_slot, reason, status (requested / confirmed / completed / cancelled), created_at | A booking. |
-| **prescriptions** | id, appointment_id → appointments, doctor_id → doctors, patient_id → profiles, notes, medicines (text), created_at | Doctor's prescription for a visit. |
-| **bills** | id, appointment_id → appointments, patient_id → profiles, amount (numeric), status (unpaid / paid), created_at | Billing for an appointment. |
+| Table             | Columns                                                                                                                                                 | Purpose                            |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------- |
+| **profiles**      | id (uuid, = auth user), full_name, email, role (patient / doctor / receptionist), phone, gender, date_of_birth, created_at                              | One row per user; holds the role.  |
+| **doctors**       | id, user_id → profiles, specialization, consultation_fee (numeric), available_days, status (active / inactive)                                          | Extra info for doctor users.       |
+| **appointments**  | id, patient_id → profiles, doctor_id → doctors, appointment_date, time_slot, reason, status (requested / confirmed / completed / cancelled), created_at | A booking.                         |
+| **prescriptions** | id, appointment_id → appointments, doctor_id → doctors, patient_id → profiles, notes, medicines (text), created_at                                      | Doctor's prescription for a visit. |
+| **bills**         | id, appointment_id → appointments, patient_id → profiles, amount (numeric), status (unpaid / paid), created_at                                          | Billing for an appointment.        |
 
 ### Naming standards (follow these exactly)
 
@@ -155,15 +155,15 @@ New sign-ups default to the **patient** role. The Receptionist creates doctor ac
 
 You get about **5 Lovable credits/day**, so this plan spreads the work. Do a little every day — do not leave it for the weekend.
 
-| Day | Goal |
-|---|---|
-| **Day 1 (Wed)** | Set up all 4 accounts. Connect Lovable→Supabase→GitHub. Add email/password + Google login. Create profiles table with role. |
-| **Day 2 (Thu)** | Role-based routing: patient / doctor / receptionist each land on their own dashboard with their own sidebar. |
-| **Day 3 (Fri)** | Receptionist: Manage Doctors (add doctors + slots). Doctors table. |
-| **Day 4 (Sat)** | Patient: Book Appointment flow. Receptionist: confirm/reschedule appointments. |
-| **Day 5 (Sun)** | Doctor: see confirmed appointments, write prescriptions. Patient: view prescriptions. |
+| Day             | Goal                                                                                                                                                   |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Day 1 (Wed)** | Set up all 4 accounts. Connect Lovable→Supabase→GitHub. Add email/password + Google login. Create profiles table with role.                            |
+| **Day 2 (Thu)** | Role-based routing: patient / doctor / receptionist each land on their own dashboard with their own sidebar.                                           |
+| **Day 3 (Fri)** | Receptionist: Manage Doctors (add doctors + slots). Doctors table.                                                                                     |
+| **Day 4 (Sat)** | Patient: Book Appointment flow. Receptionist: confirm/reschedule appointments.                                                                         |
+| **Day 5 (Sun)** | Doctor: see confirmed appointments, write prescriptions. Patient: view prescriptions.                                                                  |
 | **Day 6 (Mon)** | Billing + Row Level Security: patients see only their own appointments/prescriptions; doctors see only theirs; receptionist sees all. Polish sidebars. |
-| **Day 7 (Tue)** | Deploy to Vercel, test all 3 logins live, fill the submission report. Buffer for fixes. |
+| **Day 7 (Tue)** | Deploy to Vercel, test all 3 logins live, fill the submission report. Buffer for fixes.                                                                |
 
 ---
 
@@ -184,8 +184,9 @@ You get about **5 Lovable credits/day**, so this plan spreads the work. Do a lit
 4. Open **Environment Variables** and add your Supabase keys so the live site can reach the database:
    - `VITE_SUPABASE_URL` = your Supabase Project URL
    - `VITE_SUPABASE_ANON_KEY` = your Supabase anon/public key
-   
+
    (Use the exact variable names shown in your Lovable project's code / .env file.)
+
 5. Click **Deploy**. After a minute you get a live URL like `your-project.vercel.app` — that is your demo link.
 6. Add Vercel's URL to **Supabase → Authentication → URL Configuration** (Site URL + Redirect URLs) so Google login works on the live site.
 
@@ -195,17 +196,17 @@ You get about **5 Lovable credits/day**, so this plan spreads the work. Do a lit
 
 You will screen-share and walk through the live Vercel link. We will log in as each of the three roles. You are marked on:
 
-| Checkpoint |
-|---|
-| Email/password AND Google login both work on the live Vercel site. |
-| Patient, Doctor and Receptionist each see a clearly different sidebar. |
-| Patient can book an appointment that the Receptionist can confirm. |
-| Doctor sees only their confirmed appointments and can write a prescription. |
+| Checkpoint                                                                         |
+| ---------------------------------------------------------------------------------- |
+| Email/password AND Google login both work on the live Vercel site.                 |
+| Patient, Doctor and Receptionist each see a clearly different sidebar.             |
+| Patient can book an appointment that the Receptionist can confirm.                 |
+| Doctor sees only their confirmed appointments and can write a prescription.        |
 | Patient can view their own prescription; cannot see another patient's (RLS works). |
-| Sensible table & column names in Supabase (snake_case, foreign keys correct). |
+| Sensible table & column names in Supabase (snake_case, foreign keys correct).      |
 
 **Deliverables due by the demo:** (1) Live Vercel URL, (2) GitHub repo link, (3) Lovable project link, (4) Supabase project, (5) working login for all three roles with test credentials, filled into the **Demo Submission & Test Report**.
 
 ---
 
-*SJ Innovation — Internal intern assignment. Prepared by Amol (Tech Manager). Confidential.*
+_SJ Innovation — Internal intern assignment. Prepared by Amol (Tech Manager). Confidential._

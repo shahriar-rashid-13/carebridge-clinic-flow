@@ -76,9 +76,7 @@ function BillingPage() {
     (a) => a.status === "Completed" && !invoices.some((i) => i.appointmentId === a.id),
   );
 
-  const collected = invoices
-    .filter((i) => i.status === "Paid")
-    .reduce((s, i) => s + i.total, 0);
+  const collected = invoices.filter((i) => i.status === "Paid").reduce((s, i) => s + i.total, 0);
 
   const outstanding = invoices
     .filter((i) => i.status === "Unpaid")
@@ -88,10 +86,7 @@ function BillingPage() {
 
   const draftTotal =
     (billingDoctor?.fee ?? 0) +
-    extras.reduce(
-      (s, l) => s + (SERVICES.find((x) => x.label === l)?.amount ?? 0),
-      0,
-    );
+    extras.reduce((s, l) => s + (SERVICES.find((x) => x.label === l)?.amount ?? 0), 0);
 
   return (
     <div className="space-y-8">
@@ -109,21 +104,13 @@ function BillingPage() {
 
       <Panel title="Completed visits awaiting an invoice">
         {uninvoiced.length === 0 ? (
-          <EmptyState
-            title="Everything is invoiced"
-            description="No completed visits pending."
-          />
+          <EmptyState title="Everything is invoiced" description="No completed visits pending." />
         ) : (
           <ul className="divide-y divide-border">
             {uninvoiced.map((a) => (
-              <li
-                key={a.id}
-                className="flex flex-wrap items-center gap-3 py-3 first:pt-0"
-              >
+              <li key={a.id} className="flex flex-wrap items-center gap-3 py-3 first:pt-0">
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium">
-                    {getPatient(a.patientId)?.name}
-                  </p>
+                  <p className="truncate text-sm font-medium">{getPatient(a.patientId)?.name}</p>
 
                   <p className="truncate text-xs text-muted-foreground">
                     {getDoctor(a.doctorId)?.name} · {prettyDate(a.date)} · {a.reason}
@@ -152,10 +139,7 @@ function BillingPage() {
         ) : (
           <ul className="divide-y divide-border">
             {invoices.map((i) => (
-              <li
-                key={i.id}
-                className="flex flex-wrap items-center gap-3 py-3 first:pt-0"
-              >
+              <li key={i.id} className="flex flex-wrap items-center gap-3 py-3 first:pt-0">
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-medium">
                     {i.id} · {getPatient(i.patientId)?.name}
@@ -167,17 +151,11 @@ function BillingPage() {
                   </p>
                 </div>
 
-                <span className="text-sm tabular-nums">
-                  {money(i.total)}
-                </span>
+                <span className="text-sm tabular-nums">{money(i.total)}</span>
 
                 <StatusBadge status={i.status} />
 
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setView(i)}
-                >
+                <Button variant="outline" size="sm" onClick={() => setView(i)}>
                   View
                 </Button>
 
@@ -201,10 +179,7 @@ function BillingPage() {
       </Panel>
 
       {/* Generate invoice */}
-      <Dialog
-        open={!!billing}
-        onOpenChange={(o) => !o && setBilling(null)}
-      >
+      <Dialog open={!!billing} onOpenChange={(o) => !o && setBilling(null)}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Generate invoice</DialogTitle>
@@ -218,9 +193,7 @@ function BillingPage() {
           <div className="space-y-4">
             <div className="flex items-center justify-between rounded-md border border-border bg-linen/70 px-4 py-3 text-sm">
               <span>{billingDoctor?.specialty} consultation</span>
-              <span className="tabular-nums">
-                {money(billingDoctor?.fee ?? 0)}
-              </span>
+              <span className="tabular-nums">{money(billingDoctor?.fee ?? 0)}</span>
             </div>
 
             <div>
@@ -249,9 +222,7 @@ function BillingPage() {
                       {s.label}
                     </span>
 
-                    <span className="tabular-nums text-muted-foreground">
-                      {money(s.amount)}
-                    </span>
+                    <span className="tabular-nums text-muted-foreground">{money(s.amount)}</span>
                   </label>
                 ))}
               </div>
@@ -259,17 +230,12 @@ function BillingPage() {
 
             <div className="flex items-center justify-between border-t border-border pt-4 text-sm font-medium">
               <span>Total</span>
-              <span className="tabular-nums">
-                {money(draftTotal)}
-              </span>
+              <span className="tabular-nums">{money(draftTotal)}</span>
             </div>
           </div>
 
           <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setBilling(null)}
-            >
+            <Button variant="outline" onClick={() => setBilling(null)}>
               Cancel
             </Button>
 
@@ -285,8 +251,7 @@ function BillingPage() {
                     },
                     ...extras.map((l) => ({
                       label: l,
-                      amount:
-                        SERVICES.find((x) => x.label === l)?.amount ?? 0,
+                      amount: SERVICES.find((x) => x.label === l)?.amount ?? 0,
                     })),
                   ]);
 
@@ -296,11 +261,7 @@ function BillingPage() {
 
                   setBilling(null);
                 } catch (error) {
-                  toast.error(
-                    error instanceof Error
-                      ? error.message
-                      : "Could not create invoice.",
-                  );
+                  toast.error(error instanceof Error ? error.message : "Could not create invoice.");
                 }
               }}
             >
@@ -311,42 +272,29 @@ function BillingPage() {
       </Dialog>
 
       {/* View invoice */}
-      <Dialog
-        open={!!view}
-        onOpenChange={(o) => !o && setView(null)}
-      >
+      <Dialog open={!!view} onOpenChange={(o) => !o && setView(null)}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Invoice {view?.id}</DialogTitle>
 
             <DialogDescription>
-              {view &&
-                `${getPatient(view.patientId)?.name} · issued ${prettyDate(view.issuedAt)}`}
+              {view && `${getPatient(view.patientId)?.name} · issued ${prettyDate(view.issuedAt)}`}
             </DialogDescription>
           </DialogHeader>
 
           {view && (
             <div className="space-y-3 text-sm">
               {view.items.map((it, idx) => (
-                <div
-                  key={idx}
-                  className="flex justify-between gap-4"
-                >
-                  <span className="text-muted-foreground">
-                    {it.label}
-                  </span>
+                <div key={idx} className="flex justify-between gap-4">
+                  <span className="text-muted-foreground">{it.label}</span>
 
-                  <span className="tabular-nums">
-                    {money(it.amount)}
-                  </span>
+                  <span className="tabular-nums">{money(it.amount)}</span>
                 </div>
               ))}
 
               <div className="flex justify-between gap-4 border-t border-border pt-3 font-medium">
                 <span>Total</span>
-                <span className="tabular-nums">
-                  {money(view.total)}
-                </span>
+                <span className="tabular-nums">{money(view.total)}</span>
               </div>
 
               <div className="flex items-center justify-between gap-4 pt-2">
@@ -364,10 +312,7 @@ function BillingPage() {
       </Dialog>
 
       {/* Mark paid */}
-      <Dialog
-        open={!!paying}
-        onOpenChange={(o) => !o && setPaying(null)}
-      >
+      <Dialog open={!!paying} onOpenChange={(o) => !o && setPaying(null)}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Record payment</DialogTitle>
@@ -380,10 +325,7 @@ function BillingPage() {
           <div>
             <Label className="text-xs">Payment method</Label>
 
-            <Select
-              value={method}
-              onValueChange={setMethod}
-            >
+            <Select value={method} onValueChange={setMethod}>
               <SelectTrigger className="mt-2">
                 <SelectValue />
               </SelectTrigger>
@@ -408,16 +350,13 @@ function BillingPage() {
             </Select>
 
             <p className="mt-2 text-xs text-muted-foreground">
-              Cash payments are currently accepted. Other payment methods
-              will be available in a future version.
+              Cash payments are currently accepted. Other payment methods will be available in a
+              future version.
             </p>
           </div>
 
           <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setPaying(null)}
-            >
+            <Button variant="outline" onClick={() => setPaying(null)}>
               Cancel
             </Button>
 
@@ -426,10 +365,7 @@ function BillingPage() {
                 if (!paying) return;
 
                 try {
-                  await clinic.markInvoicePaid(
-                    paying.id,
-                    method,
-                  );
+                  await clinic.markInvoicePaid(paying.id, method);
 
                   toast.success("Payment recorded", {
                     description: `${paying.id} settled by cash.`,
@@ -437,11 +373,7 @@ function BillingPage() {
 
                   setPaying(null);
                 } catch (error) {
-                  toast.error(
-                    error instanceof Error
-                      ? error.message
-                      : "Could not record payment.",
-                  );
+                  toast.error(error instanceof Error ? error.message : "Could not record payment.");
                 }
               }}
             >

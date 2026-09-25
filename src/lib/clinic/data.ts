@@ -326,7 +326,12 @@ export const prescriptions: Prescription[] = [
     date: shiftDays(-7),
     diagnosis: "Early diabetic peripheral neuropathy",
     medications: [
-      { name: "Metformin", dosage: "1000 mg", frequency: "Twice daily with meals", duration: "90 days" },
+      {
+        name: "Metformin",
+        dosage: "1000 mg",
+        frequency: "Twice daily with meals",
+        duration: "90 days",
+      },
       { name: "Gabapentin", dosage: "300 mg", frequency: "At night", duration: "30 days" },
     ],
     notes: "Daily foot inspection. Podiatry referral placed.",

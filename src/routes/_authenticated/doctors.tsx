@@ -63,7 +63,16 @@ const emptyDoctor = (): Doctor => ({
 });
 
 function DoctorsPage() {
-  const { role, doctors, patients, appointments, toggleDoctorActive, upsertDoctor, promotePatientToDoctor, promotePatientToReceptionist } = useClinic();
+  const {
+    role,
+    doctors,
+    patients,
+    appointments,
+    toggleDoctorActive,
+    upsertDoctor,
+    promotePatientToDoctor,
+    promotePatientToReceptionist,
+  } = useClinic();
   const [editing, setEditing] = React.useState<Doctor | null>(null);
   const [rawSlots, setRawSlots] = React.useState("");
   const [isAdding, setIsAdding] = React.useState(false);
@@ -90,7 +99,12 @@ function DoctorsPage() {
   const selectedPatient = patients.find((patient) => patient.id === selectedPatientId);
   const matchingPatients = patients.filter((patient) => {
     const query = patientQuery.trim().toLowerCase();
-    return !query || [patient.name, patient.email, patient.phone].some((value) => value.toLowerCase().includes(query));
+    return (
+      !query ||
+      [patient.name, patient.email, patient.phone].some((value) =>
+        value.toLowerCase().includes(query),
+      )
+    );
   });
 
   const closeEditor = () => {
@@ -157,8 +171,8 @@ function DoctorsPage() {
             </div>
             <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-border pt-4">
               <div className="text-xs text-muted-foreground">
-                {money(d.fee)} per visit ·{" "}
-                {appointments.filter((a) => a.doctorId === d.id).length} appointments
+                {money(d.fee)} per visit · {appointments.filter((a) => a.doctorId === d.id).length}{" "}
+                appointments
               </div>
               <div className="flex items-center gap-3">
                 <Label htmlFor={`sw-${d.id}`} className="text-xs text-muted-foreground">
@@ -172,7 +186,11 @@ function DoctorsPage() {
                       await toggleDoctorActive(d.id);
                       toast.success(`${d.name} is now ${d.active ? "unavailable" : "bookable"}`);
                     } catch (error) {
-                      toast.error(error instanceof Error ? error.message : "Could not update doctor availability.");
+                      toast.error(
+                        error instanceof Error
+                          ? error.message
+                          : "Could not update doctor availability.",
+                      );
                     }
                   }}
                 />
@@ -185,18 +203,33 @@ function DoctorsPage() {
         ))}
       </div>
 
-      <Panel title="Receptionists" description="Promote an existing patient account to receptionist access. Their account and historical records remain unchanged.">
+      <Panel
+        title="Receptionists"
+        description="Promote an existing patient account to receptionist access. Their account and historical records remain unchanged."
+      >
         {patients.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No patient accounts are available to promote.</p>
+          <p className="text-sm text-muted-foreground">
+            No patient accounts are available to promote.
+          </p>
         ) : (
           <ul className="divide-y divide-border">
             {patients.map((patient) => (
-              <li key={patient.id} className="flex flex-wrap items-center gap-3 py-3 first:pt-0 last:pb-0">
+              <li
+                key={patient.id}
+                className="flex flex-wrap items-center gap-3 py-3 first:pt-0 last:pb-0"
+              >
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-medium">{patient.name}</p>
-                  <p className="truncate text-xs text-muted-foreground">{patient.email || patient.phone || "No contact details"}</p>
+                  <p className="truncate text-xs text-muted-foreground">
+                    {patient.email || patient.phone || "No contact details"}
+                  </p>
                 </div>
-                <Button variant="outline" size="sm" onClick={() => setReceptionPromotion(patient)} disabled={isPromotingReceptionist}>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setReceptionPromotion(patient)}
+                  disabled={isPromotingReceptionist}
+                >
                   Promote to Receptionist
                 </Button>
               </li>
@@ -205,30 +238,42 @@ function DoctorsPage() {
         )}
       </Panel>
 
-      <AlertDialog open={!!receptionPromotion} onOpenChange={(open) => !open && !isPromotingReceptionist && setReceptionPromotion(null)}>
+      <AlertDialog
+        open={!!receptionPromotion}
+        onOpenChange={(open) => !open && !isPromotingReceptionist && setReceptionPromotion(null)}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Promote to receptionist?</AlertDialogTitle>
             <AlertDialogDescriptionText>
-              {receptionPromotion ? `${receptionPromotion.name}'s existing account will become a receptionist account. Their profile ID, login, and historical records will remain unchanged.` : ""}
+              {receptionPromotion
+                ? `${receptionPromotion.name}'s existing account will become a receptionist account. Their profile ID, login, and historical records will remain unchanged.`
+                : ""}
             </AlertDialogDescriptionText>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={isPromotingReceptionist}>Cancel</AlertDialogCancel>
-            <AlertDialogAction disabled={isPromotingReceptionist} onClick={async (event) => {
-              event.preventDefault();
-              if (!receptionPromotion) return;
-              try {
-                setIsPromotingReceptionist(true);
-                await promotePatientToReceptionist(receptionPromotion.id);
-                toast.success(`${receptionPromotion.name} is now a receptionist.`);
-                setReceptionPromotion(null);
-              } catch (error) {
-                toast.error(error instanceof Error ? error.message : "Could not promote the patient to receptionist.");
-              } finally {
-                setIsPromotingReceptionist(false);
-              }
-            }}>
+            <AlertDialogAction
+              disabled={isPromotingReceptionist}
+              onClick={async (event) => {
+                event.preventDefault();
+                if (!receptionPromotion) return;
+                try {
+                  setIsPromotingReceptionist(true);
+                  await promotePatientToReceptionist(receptionPromotion.id);
+                  toast.success(`${receptionPromotion.name} is now a receptionist.`);
+                  setReceptionPromotion(null);
+                } catch (error) {
+                  toast.error(
+                    error instanceof Error
+                      ? error.message
+                      : "Could not promote the patient to receptionist.",
+                  );
+                } finally {
+                  setIsPromotingReceptionist(false);
+                }
+              }}
+            >
               {isPromotingReceptionist ? "Promoting…" : "Promote to Receptionist"}
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -240,7 +285,9 @@ function DoctorsPage() {
           <DialogHeader>
             <DialogTitle>{isAdding ? "Add doctor" : "Edit doctor"}</DialogTitle>
             <DialogDescription>
-              {isAdding ? "Select an existing patient, then set their doctor roster." : "Set the roster, slots and consultation fee."}
+              {isAdding
+                ? "Select an existing patient, then set their doctor roster."
+                : "Set the roster, slots and consultation fee."}
             </DialogDescription>
           </DialogHeader>
           {editing && (
@@ -252,9 +299,17 @@ function DoctorsPage() {
                     <div className="mt-2 flex items-center justify-between gap-3 rounded-md bg-card p-3">
                       <div className="min-w-0">
                         <p className="truncate text-sm font-medium">{selectedPatient.name}</p>
-                        <p className="truncate text-xs text-muted-foreground">{selectedPatient.email || "No email on profile"}</p>
+                        <p className="truncate text-xs text-muted-foreground">
+                          {selectedPatient.email || "No email on profile"}
+                        </p>
                       </div>
-                      <Button type="button" variant="outline" size="sm" onClick={() => setSelectedPatientId("")} disabled={isSaving}>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setSelectedPatientId("")}
+                        disabled={isSaving}
+                      >
                         Change
                       </Button>
                     </div>
@@ -274,26 +329,37 @@ function DoctorsPage() {
                             className="flex w-full items-center justify-between gap-3 rounded-md px-2 py-2 text-left text-sm hover:bg-card"
                             onClick={() => setSelectedPatientId(patient.id)}
                           >
-                            <span className="min-w-0"><span className="block truncate font-medium">{patient.name}</span><span className="block truncate text-xs text-muted-foreground">{patient.email || patient.phone || "No contact details"}</span></span>
+                            <span className="min-w-0">
+                              <span className="block truncate font-medium">{patient.name}</span>
+                              <span className="block truncate text-xs text-muted-foreground">
+                                {patient.email || patient.phone || "No contact details"}
+                              </span>
+                            </span>
                             <span className="text-xs text-muted-foreground">Select</span>
                           </button>
                         ))}
-                        {matchingPatients.length === 0 && <p className="px-2 py-3 text-sm text-muted-foreground">No active patients match that search.</p>}
+                        {matchingPatients.length === 0 && (
+                          <p className="px-2 py-3 text-sm text-muted-foreground">
+                            No active patients match that search.
+                          </p>
+                        )}
                       </div>
                     </>
                   )}
                 </div>
               )}
               <div className="grid gap-4 sm:grid-cols-2">
-                {!isAdding && <div>
-                  <Label className="text-xs">Name</Label>
-                  <Input
-                    value={editing.name}
-                    onChange={(e) => setEditing({ ...editing, name: e.target.value })}
-                    placeholder="Dr. Jane Doe"
-                    className="mt-1.5"
-                  />
-                </div>}
+                {!isAdding && (
+                  <div>
+                    <Label className="text-xs">Name</Label>
+                    <Input
+                      value={editing.name}
+                      onChange={(e) => setEditing({ ...editing, name: e.target.value })}
+                      placeholder="Dr. Jane Doe"
+                      className="mt-1.5"
+                    />
+                  </div>
+                )}
                 <div>
                   <Label className="text-xs">Specialty</Label>
                   <Input
@@ -325,10 +391,18 @@ function DoctorsPage() {
               {isAdding && (
                 <div className="flex items-center justify-between rounded-lg border border-border px-3 py-2">
                   <div>
-                    <Label htmlFor="new-doctor-active" className="text-sm">Bookable immediately</Label>
-                    <p className="text-xs text-muted-foreground">Controls whether patients can book this doctor now.</p>
+                    <Label htmlFor="new-doctor-active" className="text-sm">
+                      Bookable immediately
+                    </Label>
+                    <p className="text-xs text-muted-foreground">
+                      Controls whether patients can book this doctor now.
+                    </p>
                   </div>
-                  <Switch id="new-doctor-active" checked={editing.active} onCheckedChange={(active) => setEditing({ ...editing, active })} />
+                  <Switch
+                    id="new-doctor-active"
+                    checked={editing.active}
+                    onCheckedChange={(active) => setEditing({ ...editing, active })}
+                  />
                 </div>
               )}
               <div>
@@ -384,7 +458,10 @@ function DoctorsPage() {
             <Button
               onClick={async () => {
                 if (!editing) return;
-                const slots = rawSlots.split(",").map((slot) => slot.trim()).filter(Boolean);
+                const slots = rawSlots
+                  .split(",")
+                  .map((slot) => slot.trim())
+                  .filter(Boolean);
                 if (!editing.specialty.trim()) {
                   toast.error("Specialty is required.");
                   return;
@@ -426,7 +503,9 @@ function DoctorsPage() {
                   setEditing(null);
                   setIsAdding(false);
                 } catch (error) {
-                  toast.error(error instanceof Error ? error.message : "Could not save doctor schedule.");
+                  toast.error(
+                    error instanceof Error ? error.message : "Could not save doctor schedule.",
+                  );
                 } finally {
                   setIsSaving(false);
                 }

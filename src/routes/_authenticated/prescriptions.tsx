@@ -149,7 +149,9 @@ function RxCard({ rx, doctorName }: { rx: Prescription; doctorName: string }) {
       </div>
       {rx.notes && (
         <div className="mt-5 rounded-md border border-border bg-linen/70 p-4">
-          <p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">Doctor's notes</p>
+          <p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">
+            Doctor's notes
+          </p>
           <p className="mt-2 text-sm">{rx.notes}</p>
         </div>
       )}

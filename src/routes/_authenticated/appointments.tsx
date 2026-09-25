@@ -84,11 +84,7 @@ function AppointmentsPage() {
     .filter((a) => status === "All" || a.status === status)
     .filter((a) => {
       if (!q.trim()) return true;
-      const hay = [
-        getPatient(a.patientId)?.name,
-        getDoctor(a.doctorId)?.name,
-        a.reason,
-      ]
+      const hay = [getPatient(a.patientId)?.name, getDoctor(a.doctorId)?.name, a.reason]
         .join(" ")
         .toLowerCase();
       return hay.includes(q.toLowerCase());
@@ -101,7 +97,13 @@ function AppointmentsPage() {
   return (
     <div className="space-y-8">
       <PageHeader
-        eyebrow={role === "receptionist" ? "Front desk" : role === "doctor" ? "Clinician" : "Patient portal"}
+        eyebrow={
+          role === "receptionist"
+            ? "Front desk"
+            : role === "doctor"
+              ? "Clinician"
+              : "Patient portal"
+        }
         title={title}
         description={
           role === "receptionist"
@@ -160,7 +162,10 @@ function AppointmentsPage() {
               const doc = getDoctor(a.doctorId);
               const pat = getPatient(a.patientId);
               return (
-                <li key={a.id} className="flex flex-wrap items-center gap-3 py-4 first:pt-0 last:pb-0">
+                <li
+                  key={a.id}
+                  className="flex flex-wrap items-center gap-3 py-4 first:pt-0 last:pb-0"
+                >
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-medium">
                       {role === "patient" ? doc?.name : pat?.name}
@@ -187,7 +192,11 @@ function AppointmentsPage() {
                                 description: `${pat?.name} with ${doc?.name} on ${prettyDate(a.date)}.`,
                               });
                             } catch (error) {
-                              toast.error(error instanceof Error ? error.message : "Could not confirm appointment.");
+                              toast.error(
+                                error instanceof Error
+                                  ? error.message
+                                  : "Could not confirm appointment.",
+                              );
                             }
                           }}
                         >
@@ -289,7 +298,9 @@ function AppointmentsPage() {
                   toast.success("Appointment cancelled");
                   setCancelling(null);
                 } catch (error) {
-                  toast.error(error instanceof Error ? error.message : "Could not cancel appointment.");
+                  toast.error(
+                    error instanceof Error ? error.message : "Could not cancel appointment.",
+                  );
                 }
               }}
             >
@@ -356,7 +367,9 @@ function RescheduleDialog({ appt, onClose }: { appt: Appointment | null; onClose
                     <SelectItem
                       key={s}
                       value={s}
-                      disabled={appt ? isSlotTaken(appt.doctorId, date, s) && s !== appt.slot : false}
+                      disabled={
+                        appt ? isSlotTaken(appt.doctorId, date, s) && s !== appt.slot : false
+                      }
                     >
                       {s}
                     </SelectItem>
@@ -381,7 +394,9 @@ function RescheduleDialog({ appt, onClose }: { appt: Appointment | null; onClose
                 });
                 onClose();
               } catch (error) {
-                toast.error(error instanceof Error ? error.message : "Could not reschedule appointment.");
+                toast.error(
+                  error instanceof Error ? error.message : "Could not reschedule appointment.",
+                );
               }
             }}
           >

@@ -43,7 +43,9 @@ function SchedulePage() {
 
   const week = Array.from({ length: 7 }, (_, i) => shiftDays(i));
   const dayList = appointments
-    .filter((a) => a.doctorId === currentDoctor.id && a.date === selected && a.status !== "Cancelled")
+    .filter(
+      (a) => a.doctorId === currentDoctor.id && a.date === selected && a.status !== "Cancelled",
+    )
     .sort((a, b) => a.slot.localeCompare(b.slot));
 
   return (
@@ -67,7 +69,9 @@ function SchedulePage() {
                     currentDoctor.active ? "Marked unavailable" : "Marked available for booking",
                   );
                 } catch (error) {
-                  toast.error(error instanceof Error ? error.message : "Could not update availability.");
+                  toast.error(
+                    error instanceof Error ? error.message : "Could not update availability.",
+                  );
                 }
               }}
             />
@@ -87,7 +91,9 @@ function SchedulePage() {
               onClick={() => setSelected(d)}
               className={cn(
                 "rounded-lg border p-3 text-left transition-colors",
-                selected === d ? "border-primary bg-primary/5" : "border-border bg-card hover:bg-linen",
+                selected === d
+                  ? "border-primary bg-primary/5"
+                  : "border-border bg-card hover:bg-linen",
               )}
             >
               <p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">

@@ -88,9 +88,7 @@ const getProfile = async (supabaseUser: SupabaseUser): Promise<Profile> => {
 };
 
 const errorMessage = (error: unknown) =>
-  error instanceof Error
-    ? error.message
-    : "We could not initialize your clinic profile.";
+  error instanceof Error ? error.message : "We could not initialize your clinic profile.";
 
 const syncSession = async (session: Session | null) => {
   const version = ++sessionSyncVersion;

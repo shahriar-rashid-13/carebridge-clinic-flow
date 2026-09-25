@@ -61,9 +61,7 @@ interface ClinicState {
   getDoctor: (id: string) => Doctor | undefined;
   getPatient: (id: string) => Patient | undefined;
 
-  updatePatientProfile: (
-    input: UpdatePatientProfileInput,
-  ) => Promise<void>;
+  updatePatientProfile: (input: UpdatePatientProfileInput) => Promise<void>;
 
   bookAppointment: (input: {
     patientId: string;
@@ -74,16 +72,9 @@ interface ClinicState {
     notes: string;
   }) => Promise<void>;
 
-  setAppointmentStatus: (
-    id: string,
-    status: Appointment["status"],
-  ) => Promise<void>;
+  setAppointmentStatus: (id: string, status: Appointment["status"]) => Promise<void>;
 
-  rescheduleAppointment: (
-    id: string,
-    date: string,
-    slot: string,
-  ) => Promise<void>;
+  rescheduleAppointment: (id: string, date: string, slot: string) => Promise<void>;
 
   completeConsultation: (input: {
     appointmentId: string;
@@ -94,40 +85,22 @@ interface ClinicState {
 
   upsertDoctor: (doctor: Doctor) => Promise<void>;
 
-  promotePatientToDoctor: (
-    input: PromotePatientToDoctorInput,
-  ) => Promise<void>;
+  promotePatientToDoctor: (input: PromotePatientToDoctorInput) => Promise<void>;
 
-  promotePatientToReceptionist: (
-    profileId: string,
-  ) => Promise<void>;
+  promotePatientToReceptionist: (profileId: string) => Promise<void>;
 
   toggleDoctorActive: (id: string) => Promise<void>;
 
-  createInvoice: (
-    appointmentId: string,
-    items: InvoiceItem[],
-  ) => Promise<void>;
+  createInvoice: (appointmentId: string, items: InvoiceItem[]) => Promise<void>;
 
-  markInvoicePaid: (
-    id: string,
-    method: string,
-  ) => Promise<void>;
+  markInvoicePaid: (id: string, method: string) => Promise<void>;
 
-  isSlotTaken: (
-    doctorId: string,
-    date: string,
-    slot: string,
-  ) => boolean;
+  isSlotTaken: (doctorId: string, date: string, slot: string) => boolean;
 }
 
 const ClinicContext = React.createContext<ClinicState | null>(null);
 
-const emptyPatient = (
-  id: string,
-  name: string,
-  email: string,
-): Patient => ({
+const emptyPatient = (id: string, name: string, email: string): Patient => ({
   id,
   name,
   email,
@@ -157,21 +130,13 @@ const emptyDoctor: Doctor = {
   room: "",
 };
 
-const rowError = (
-  operation: string,
-  error: unknown,
-) => {
-  const message =
-    error instanceof Error
-      ? error.message
-      : "Unknown Supabase error";
+const rowError = (operation: string, error: unknown) => {
+  const message = error instanceof Error ? error.message : "Unknown Supabase error";
 
   return `${operation} failed: ${message}`;
 };
 
-const appointmentSlotConflict = (
-  error: unknown,
-) => {
+const appointmentSlotConflict = (error: unknown) => {
   if (!error || typeof error !== "object") {
     return false;
   }
@@ -182,45 +147,25 @@ const appointmentSlotConflict = (
   };
 
   return (
-    databaseError.code === "23505" &&
-    databaseError.constraint ===
-      "appointments_active_slot_unique"
+    databaseError.code === "23505" && databaseError.constraint === "appointments_active_slot_unique"
   );
 };
 
-const fetchClinicData = async (
-  userId: string,
-  userRole: Role,
-) => {
-  const [
-    profilesResult,
-    doctorsResult,
-    appointmentsResult,
-    prescriptionsResult,
-    billsResult,
-  ] = await Promise.all([
-    supabase
-      .from("profiles")
-      .select("*"),
+const fetchClinicData = async (userId: string, userRole: Role) => {
+  const [profilesResult, doctorsResult, appointmentsResult, prescriptionsResult, billsResult] =
+    await Promise.all([
+      supabase.from("profiles").select("*"),
 
-    supabase
-      .from("doctors")
-      .select(
-        "*, profile:profiles!doctors_user_id_fkey(id, full_name, email, role)",
-      ),
+      supabase
+        .from("doctors")
+        .select("*, profile:profiles!doctors_user_id_fkey(id, full_name, email, role)"),
 
-    supabase
-      .from("appointments")
-      .select("*"),
+      supabase.from("appointments").select("*"),
 
-    supabase
-      .from("prescriptions")
-      .select("*"),
+      supabase.from("prescriptions").select("*"),
 
-    supabase
-      .from("bills")
-      .select("*"),
-  ]);
+      supabase.from("bills").select("*"),
+    ]);
 
   const results = [
     ["Loading profiles", profilesResult.error],
@@ -230,34 +175,22 @@ const fetchClinicData = async (
     ["Loading bills", billsResult.error],
   ] as const;
 
-  const failed = results.find(
-    ([, error]) => error,
-  );
+  const failed = results.find(([, error]) => error);
 
   if (failed?.[1]) {
-    throw new Error(
-      rowError(failed[0], failed[1]),
-    );
+    throw new Error(rowError(failed[0], failed[1]));
   }
 
-  const profiles =
-    (profilesResult.data ?? []) as Row[];
+  const profiles = (profilesResult.data ?? []) as Row[];
 
-  const profileById = new Map(
-    profiles.map((profile) => [
-      String(profile.id),
-      profile,
-    ]),
-  );
+  const profileById = new Map(profiles.map((profile) => [String(profile.id), profile]));
 
-  const doctorRows =
-    (doctorsResult.data ?? []) as Row[];
+  const doctorRows = (doctorsResult.data ?? []) as Row[];
 
   const doctors = doctorRows.map((doctor) =>
     mapDoctor(
       doctor,
-      (doctor.profile as Row | null | undefined) ??
-        profileById.get(String(doctor.user_id)),
+      (doctor.profile as Row | null | undefined) ?? profileById.get(String(doctor.user_id)),
     ),
   );
 
@@ -266,29 +199,15 @@ const fetchClinicData = async (
 
     doctors,
 
-    patients: profiles
-      .filter(
-        (profile) => profile.role === "patient",
-      )
-      .map(mapProfileToPatient),
+    patients: profiles.filter((profile) => profile.role === "patient").map(mapProfileToPatient),
 
-    appointments: (
-      (appointmentsResult.data ?? []) as Row[]
-    ).map(mapAppointment),
+    appointments: ((appointmentsResult.data ?? []) as Row[]).map(mapAppointment),
 
-    prescriptions: (
-      (prescriptionsResult.data ?? []) as Row[]
-    ).map(mapPrescription),
+    prescriptions: ((prescriptionsResult.data ?? []) as Row[]).map(mapPrescription),
 
-    invoices: (
-      (billsResult.data ?? []) as Row[]
-    ).map((bill) => {
-      const appointment = (
-        (appointmentsResult.data ?? []) as Row[]
-      ).find(
-        (item) =>
-          String(item.id) ===
-          String(bill.appointment_id),
+    invoices: ((billsResult.data ?? []) as Row[]).map((bill) => {
+      const appointment = ((appointmentsResult.data ?? []) as Row[]).find(
+        (item) => String(item.id) === String(bill.appointment_id),
       );
 
       return mapInvoice({
@@ -299,61 +218,33 @@ const fetchClinicData = async (
 
     currentDoctorId:
       userRole === "doctor"
-        ? String(
-            doctorRows.find(
-              (doctor) =>
-                String(doctor.user_id) === userId,
-            )?.id ?? "",
-          )
+        ? String(doctorRows.find((doctor) => String(doctor.user_id) === userId)?.id ?? "")
         : "",
   };
 };
 
-export function ClinicProvider({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
-  const {
-    user,
-    profile,
-    isAuthenticated,
-    isLoading: authLoading,
-  } = useAuth();
+export function ClinicProvider({ children }: { children: React.ReactNode }) {
+  const { user, profile, isAuthenticated, isLoading: authLoading } = useAuth();
 
-  const [role, setRole] =
-    React.useState<Role>(
-      profile?.role ??
-        user?.role ??
-        "patient",
-    );
+  const [role, setRole] = React.useState<Role>(profile?.role ?? user?.role ?? "patient");
 
-  const [currentDoctorId, setCurrentDoctorId] =
-    React.useState("");
+  const [currentDoctorId, setCurrentDoctorId] = React.useState("");
 
-  const [doctors, setDoctors] =
-    React.useState<Doctor[]>([]);
+  const [doctors, setDoctors] = React.useState<Doctor[]>([]);
 
-  const [patients, setPatients] =
-    React.useState<Patient[]>([]);
+  const [patients, setPatients] = React.useState<Patient[]>([]);
 
-  const [appointments, setAppointments] =
-    React.useState<Appointment[]>([]);
+  const [appointments, setAppointments] = React.useState<Appointment[]>([]);
 
-  const [prescriptions, setPrescriptions] =
-    React.useState<Prescription[]>([]);
+  const [prescriptions, setPrescriptions] = React.useState<Prescription[]>([]);
 
-  const [invoices, setInvoices] =
-    React.useState<Invoice[]>([]);
+  const [invoices, setInvoices] = React.useState<Invoice[]>([]);
 
-  const [loading, setLoading] =
-    React.useState(false);
+  const [loading, setLoading] = React.useState(false);
 
-  const [error, setError] =
-    React.useState<string | null>(null);
+  const [error, setError] = React.useState<string | null>(null);
 
-  const [reloadKey, setReloadKey] =
-    React.useState(0);
+  const [reloadKey, setReloadKey] = React.useState(0);
 
   React.useEffect(() => {
     if (profile?.role) {
@@ -372,36 +263,20 @@ export function ClinicProvider({
       .select("id, user_id")
       .eq("user_id", user.id)
       .maybeSingle()
-      .then(
-        ({
-          data,
-          error: doctorError,
-        }) => {
-          if (doctorError) {
-            setError(
-              rowError(
-                "Resolving doctor identity",
-                doctorError,
-              ),
-            );
-            return;
-          }
+      .then(({ data, error: doctorError }) => {
+        if (doctorError) {
+          setError(rowError("Resolving doctor identity", doctorError));
+          return;
+        }
 
-          if (data?.id) {
-            setCurrentDoctorId(
-              String(data.id),
-            );
-          }
-        },
-      );
+        if (data?.id) {
+          setCurrentDoctorId(String(data.id));
+        }
+      });
   }, [user?.id, user?.role]);
 
   React.useEffect(() => {
-    if (
-      authLoading ||
-      !isAuthenticated ||
-      !user
-    ) {
+    if (authLoading || !isAuthenticated || !user) {
       return;
     }
 
@@ -410,30 +285,21 @@ export function ClinicProvider({
     setLoading(true);
     setError(null);
 
-    void fetchClinicData(
-      user.id,
-      user.role,
-    )
+    void fetchClinicData(user.id, user.role)
       .then((data) => {
         if (cancelled) return;
 
         setDoctors(data.doctors);
         setPatients(data.patients);
         setAppointments(data.appointments);
-        setPrescriptions(
-          data.prescriptions,
-        );
+        setPrescriptions(data.prescriptions);
         setInvoices(data.invoices);
-        setCurrentDoctorId(
-          data.currentDoctorId,
-        );
+        setCurrentDoctorId(data.currentDoctorId);
       })
       .catch((loadError: unknown) => {
         if (!cancelled) {
           setError(
-            loadError instanceof Error
-              ? loadError.message
-              : "Clinic data could not be loaded.",
+            loadError instanceof Error ? loadError.message : "Clinic data could not be loaded.",
           );
         }
       })
@@ -446,40 +312,21 @@ export function ClinicProvider({
     return () => {
       cancelled = true;
     };
-  }, [
-    authLoading,
-    isAuthenticated,
-    reloadKey,
-    user,
-  ]);
+  }, [authLoading, isAuthenticated, reloadKey, user]);
 
   const reload = async () => {
     setReloadKey((key) => key + 1);
   };
 
-  const currentPatientId =
-    user?.id ?? "";
+  const currentPatientId = user?.id ?? "";
 
   const currentPatient =
-    patients.find(
-      (patient) =>
-        patient.id === currentPatientId,
-    ) ??
+    patients.find((patient) => patient.id === currentPatientId) ??
     (profile
-      ? emptyPatient(
-          profile.id,
-          profile.full_name ??
-            user?.name ??
-            "",
-          user?.email ?? "",
-        )
+      ? emptyPatient(profile.id, profile.full_name ?? user?.name ?? "", user?.email ?? "")
       : emptyPatient("", "", ""));
 
-  const currentDoctor =
-    doctors.find(
-      (doctor) =>
-        doctor.id === currentDoctorId,
-    ) ?? emptyDoctor;
+  const currentDoctor = doctors.find((doctor) => doctor.id === currentDoctorId) ?? emptyDoctor;
 
   const value: ClinicState = {
     role,
@@ -504,109 +351,68 @@ export function ClinicProvider({
 
     reload,
 
-    getDoctor: (id) =>
-      doctors.find(
-        (doctor) => doctor.id === id,
-      ),
+    getDoctor: (id) => doctors.find((doctor) => doctor.id === id),
 
-    getPatient: (id) =>
-      patients.find(
-        (patient) => patient.id === id,
-      ),
+    getPatient: (id) => patients.find((patient) => patient.id === id),
 
     /*
      * PATIENT SELF-PROFILE EDITING
      */
-    updatePatientProfile: async (
-      input,
-    ) => {
+    updatePatientProfile: async (input) => {
       if (!currentPatientId) {
-        throw new Error(
-          "You must be signed in to update your profile.",
-        );
+        throw new Error("You must be signed in to update your profile.");
       }
 
-      const fullName =
-        input.fullName.trim();
+      const fullName = input.fullName.trim();
 
       if (!fullName) {
-        throw new Error(
-          "Full name cannot be empty.",
-        );
+        throw new Error("Full name cannot be empty.");
       }
 
-      const { data, error: updateError } =
-        await supabase
-          .from("profiles")
-          .update({
-            full_name: fullName,
-            phone: input.phone.trim(),
-            gender: input.gender.trim(),
-            date_of_birth:
-              input.dateOfBirth || null,
-            blood_type:
-              input.bloodType.trim(),
-            allergies: input.allergies,
-            conditions: input.conditions,
-            address: input.address.trim(),
-            emergency_contact_name:
-              input.emergencyContactName.trim(),
-            emergency_contact_relation:
-              input.emergencyContactRelation.trim(),
-            emergency_contact_phone:
-              input.emergencyContactPhone.trim(),
-          })
-          .eq("id", currentPatientId)
-          .select()
-          .single();
+      const { data, error: updateError } = await supabase
+        .from("profiles")
+        .update({
+          full_name: fullName,
+          phone: input.phone.trim(),
+          gender: input.gender.trim(),
+          date_of_birth: input.dateOfBirth || null,
+          blood_type: input.bloodType.trim(),
+          allergies: input.allergies,
+          conditions: input.conditions,
+          address: input.address.trim(),
+          emergency_contact_name: input.emergencyContactName.trim(),
+          emergency_contact_relation: input.emergencyContactRelation.trim(),
+          emergency_contact_phone: input.emergencyContactPhone.trim(),
+        })
+        .eq("id", currentPatientId)
+        .select()
+        .single();
 
       if (updateError) {
-        throw new Error(
-          rowError(
-            "Updating patient profile",
-            updateError,
-          ),
-        );
+        throw new Error(rowError("Updating patient profile", updateError));
       }
 
       if (!data) {
-        throw new Error(
-          "Updating patient profile failed: Supabase returned no profile.",
-        );
+        throw new Error("Updating patient profile failed: Supabase returned no profile.");
       }
 
-      const updatedPatient =
-        mapProfileToPatient(
-          data as Row,
-        );
+      const updatedPatient = mapProfileToPatient(data as Row);
 
       setPatients((items) =>
-        items.map((patient) =>
-          patient.id ===
-          updatedPatient.id
-            ? updatedPatient
-            : patient,
-        ),
+        items.map((patient) => (patient.id === updatedPatient.id ? updatedPatient : patient)),
       );
     },
 
     /*
      * APPOINTMENTS
      */
-    bookAppointment: async (
-      input,
-    ) => {
-      const {
-        data,
-        error: insertError,
-      } = await supabase
+    bookAppointment: async (input) => {
+      const { data, error: insertError } = await supabase
         .from("appointments")
         .insert({
-          patient_id:
-            currentPatientId,
+          patient_id: currentPatientId,
           doctor_id: input.doctorId,
-          appointment_date:
-            input.date,
+          appointment_date: input.date,
           time_slot: input.slot,
           reason: input.reason,
           notes: input.notes,
@@ -617,72 +423,36 @@ export function ClinicProvider({
 
       if (insertError) {
         throw new Error(
-          appointmentSlotConflict(
-            insertError,
-          )
+          appointmentSlotConflict(insertError)
             ? "This time slot was just booked by another patient. Please choose another slot."
-            : rowError(
-                "Booking appointment",
-                insertError,
-              ),
+            : rowError("Booking appointment", insertError),
         );
       }
 
-      setAppointments((items) => [
-        mapAppointment(data as Row),
-        ...items,
-      ]);
+      setAppointments((items) => [mapAppointment(data as Row), ...items]);
     },
 
-    setAppointmentStatus: async (
-      id,
-      status,
-    ) => {
-      const {
-        data,
-        error: updateError,
-      } = await supabase
+    setAppointmentStatus: async (id, status) => {
+      const { data, error: updateError } = await supabase
         .from("appointments")
         .update({
-          status:
-            appointmentStatusValue(
-              status,
-            ),
+          status: appointmentStatusValue(status),
         })
         .eq("id", id)
         .select()
         .single();
 
       if (updateError) {
-        throw new Error(
-          rowError(
-            "Updating appointment status",
-            updateError,
-          ),
-        );
+        throw new Error(rowError("Updating appointment status", updateError));
       }
 
-      const updated =
-        mapAppointment(data as Row);
+      const updated = mapAppointment(data as Row);
 
-      setAppointments((items) =>
-        items.map((item) =>
-          item.id === id
-            ? updated
-            : item,
-        ),
-      );
+      setAppointments((items) => items.map((item) => (item.id === id ? updated : item)));
     },
 
-    rescheduleAppointment: async (
-      id,
-      date,
-      slot,
-    ) => {
-      const {
-        data,
-        error: updateError,
-      } = await supabase
+    rescheduleAppointment: async (id, date, slot) => {
+      const { data, error: updateError } = await supabase
         .from("appointments")
         .update({
           appointment_date: date,
@@ -694,102 +464,54 @@ export function ClinicProvider({
         .single();
 
       if (updateError) {
-        throw new Error(
-          rowError(
-            "Rescheduling appointment",
-            updateError,
-          ),
-        );
+        throw new Error(rowError("Rescheduling appointment", updateError));
       }
 
-      const updated =
-        mapAppointment(data as Row);
+      const updated = mapAppointment(data as Row);
 
-      setAppointments((items) =>
-        items.map((item) =>
-          item.id === id
-            ? updated
-            : item,
-        ),
-      );
+      setAppointments((items) => items.map((item) => (item.id === id ? updated : item)));
     },
 
     /*
      * CONSULTATIONS
      */
-    completeConsultation: async ({
-      appointmentId,
-      diagnosis,
-      medications,
-      notes,
-    }) => {
-      const appointment =
-        appointments.find(
-          (item) =>
-            item.id === appointmentId,
-        );
+    completeConsultation: async ({ appointmentId, diagnosis, medications, notes }) => {
+      const appointment = appointments.find((item) => item.id === appointmentId);
 
       if (!appointment) {
-        throw new Error(
-          "The appointment could not be found.",
-        );
+        throw new Error("The appointment could not be found.");
       }
 
-      if (
-        prescriptions.some(
-          (prescription) =>
-            prescription.appointmentId ===
-            appointmentId,
-        )
-      ) {
+      if (prescriptions.some((prescription) => prescription.appointmentId === appointmentId)) {
         throw new Error(
           "This appointment already has a prescription. It cannot be submitted again.",
         );
       }
 
-      const {
-        data: prescriptionData,
-        error: prescriptionError,
-      } = await supabase
+      const { data: prescriptionData, error: prescriptionError } = await supabase
         .from("prescriptions")
         .insert({
-          appointment_id:
-            appointmentId,
-          doctor_id:
-            appointment.doctorId,
-          patient_id:
-            appointment.patientId,
+          appointment_id: appointmentId,
+          doctor_id: appointment.doctorId,
+          patient_id: appointment.patientId,
           diagnosis,
           notes,
-          medicines:
-            JSON.stringify(
-              medications,
-            ),
+          medicines: JSON.stringify(medications),
         })
         .select()
         .single();
 
       if (prescriptionError) {
-        const duplicate =
-          "code" in
-            prescriptionError &&
-          prescriptionError.code ===
-            "23505";
+        const duplicate = "code" in prescriptionError && prescriptionError.code === "23505";
 
         throw new Error(
           duplicate
             ? "This appointment already has a prescription. It cannot be submitted again."
-            : rowError(
-                "Saving prescription",
-                prescriptionError,
-              ),
+            : rowError("Saving prescription", prescriptionError),
         );
       }
 
-      const {
-        data: appointmentData,
-        error: appointmentError,
-      } = await supabase
+      const { data: appointmentData, error: appointmentError } = await supabase
         .from("appointments")
         .update({
           status: "completed",
@@ -799,46 +521,23 @@ export function ClinicProvider({
         .single();
 
       if (appointmentError) {
-        throw new Error(
-          rowError(
-            "Completing appointment",
-            appointmentError,
-          ),
-        );
+        throw new Error(rowError("Completing appointment", appointmentError));
       }
 
-      setPrescriptions((items) => [
-        mapPrescription(
-          prescriptionData as Row,
-        ),
-        ...items,
-      ]);
+      setPrescriptions((items) => [mapPrescription(prescriptionData as Row), ...items]);
 
-      const updatedAppointment =
-        mapAppointment(
-          appointmentData as Row,
-        );
+      const updatedAppointment = mapAppointment(appointmentData as Row);
 
       setAppointments((items) =>
-        items.map((item) =>
-          item.id === appointmentId
-            ? updatedAppointment
-            : item,
-        ),
+        items.map((item) => (item.id === appointmentId ? updatedAppointment : item)),
       );
     },
 
     /*
      * DOCTORS
      */
-    upsertDoctor: async (
-      doctor,
-    ) => {
-      const existing =
-        doctors.some(
-          (item) =>
-            item.id === doctor.id,
-        );
+    upsertDoctor: async (doctor) => {
+      const existing = doctors.some((item) => item.id === doctor.id);
 
       if (!existing) {
         throw new Error(
@@ -847,25 +546,16 @@ export function ClinicProvider({
       }
 
       const payload = {
-        specialization:
-          doctor.specialty,
-        consultation_fee:
-          doctor.fee,
-        available_days:
-          doctor.days,
-        slots:
-          doctor.slots,
-        status: doctor.active
-          ? "active"
-          : "inactive",
+        specialization: doctor.specialty,
+        consultation_fee: doctor.fee,
+        available_days: doctor.days,
+        slots: doctor.slots,
+        status: doctor.active ? "active" : "inactive",
         bio: doctor.bio,
         room: doctor.room,
       };
 
-      const {
-        data,
-        error: doctorError,
-      } = await supabase
+      const { data, error: doctorError } = await supabase
         .from("doctors")
         .update(payload)
         .eq("id", doctor.id)
@@ -873,43 +563,25 @@ export function ClinicProvider({
         .single();
 
       if (doctorError) {
-        throw new Error(
-          rowError(
-            "Updating doctor",
-            doctorError,
-          ),
-        );
+        throw new Error(rowError("Updating doctor", doctorError));
       }
 
-      const userId =
-        (data as Row).user_id;
+      const userId = (data as Row).user_id;
 
-      if (
-        userId &&
-        doctor.name.trim()
-      ) {
-        const {
-          error: profileError,
-        } = await supabase
+      if (userId && doctor.name.trim()) {
+        const { error: profileError } = await supabase
           .from("profiles")
           .update({
-            full_name:
-              doctor.name.trim(),
+            full_name: doctor.name.trim(),
           })
           .eq("id", userId);
 
         if (profileError) {
-          throw new Error(
-            rowError(
-              "Updating doctor profile",
-              profileError,
-            ),
-          );
+          throw new Error(rowError("Updating doctor profile", profileError));
         }
       }
 
-      const mapped =
-        mapDoctor(data as Row);
+      const mapped = mapDoctor(data as Row);
 
       setDoctors((items) =>
         items.map((item) =>
@@ -923,201 +595,108 @@ export function ClinicProvider({
       );
     },
 
-    promotePatientToDoctor:
-      async (input) => {
-        const {
-          data,
-          error: promotionError,
-        } = await supabase.rpc(
-          "promote_patient_to_doctor",
-          {
-            p_target_profile_id:
-              input.profileId,
-            p_specialization:
-              input.specialization.trim(),
-            p_consultation_fee:
-              input.consultationFee,
-            p_available_days:
-              input.availableDays,
-            p_slots:
-              input.slots,
-            p_active:
-              input.active,
-            p_bio:
-              input.bio.trim(),
-            p_room:
-              input.room.trim(),
-          },
+    promotePatientToDoctor: async (input) => {
+      const { data, error: promotionError } = await supabase.rpc("promote_patient_to_doctor", {
+        p_target_profile_id: input.profileId,
+        p_specialization: input.specialization.trim(),
+        p_consultation_fee: input.consultationFee,
+        p_available_days: input.availableDays,
+        p_slots: input.slots,
+        p_active: input.active,
+        p_bio: input.bio.trim(),
+        p_room: input.room.trim(),
+      });
+
+      if (promotionError) {
+        throw new Error(rowError("Promoting patient", promotionError));
+      }
+
+      if (!data || typeof data !== "object") {
+        throw new Error("Promoting patient failed: the database did not return the new doctor.");
+      }
+
+      const doctorRow = data as Row;
+
+      const profileRow = doctorRow["profile"] as Row | null | undefined;
+
+      const promotedDoctor = mapDoctor(doctorRow, profileRow ?? undefined);
+
+      setDoctors((items) => [...items, promotedDoctor]);
+
+      setPatients((items) => items.filter((patient) => patient.id !== input.profileId));
+    },
+
+    promotePatientToReceptionist: async (profileId) => {
+      const { data, error: promotionError } = await supabase.rpc(
+        "promote_patient_to_receptionist",
+        {
+          p_target_profile_id: profileId,
+        },
+      );
+
+      if (promotionError) {
+        throw new Error(rowError("Promoting patient to receptionist", promotionError));
+      }
+
+      if (!data || typeof data !== "object") {
+        throw new Error(
+          "Promoting patient to receptionist failed: the database did not return the updated profile.",
         );
+      }
 
-        if (promotionError) {
-          throw new Error(
-            rowError(
-              "Promoting patient",
-              promotionError,
-            ),
-          );
-        }
+      setPatients((items) => items.filter((patient) => patient.id !== profileId));
+    },
 
-        if (
-          !data ||
-          typeof data !== "object"
-        ) {
-          throw new Error(
-            "Promoting patient failed: the database did not return the new doctor.",
-          );
-        }
+    toggleDoctorActive: async (id) => {
+      const doctor = doctors.find((item) => item.id === id);
 
-        const doctorRow =
-          data as Row;
+      if (!doctor) {
+        throw new Error("The doctor could not be found.");
+      }
 
-        const profileRow =
-          doctorRow["profile"] as
-            | Row
-            | null
-            | undefined;
+      const { data, error: updateError } = await supabase
+        .from("doctors")
+        .update({
+          status: doctor.active ? "inactive" : "active",
+        })
+        .eq("id", id)
+        .select()
+        .single();
 
-        const promotedDoctor =
-          mapDoctor(
-            doctorRow,
-            profileRow ??
-              undefined,
-          );
+      if (updateError) {
+        throw new Error(rowError("Updating doctor availability", updateError));
+      }
 
-        setDoctors((items) => [
-          ...items,
-          promotedDoctor,
-        ]);
+      const updated = mapDoctor(data as Row);
 
-        setPatients((items) =>
-          items.filter(
-            (patient) =>
-              patient.id !==
-              input.profileId,
-          ),
-        );
-      },
-
-    promotePatientToReceptionist:
-      async (profileId) => {
-        const {
-          data,
-          error: promotionError,
-        } = await supabase.rpc(
-          "promote_patient_to_receptionist",
-          {
-            p_target_profile_id: profileId,
-          },
-        );
-
-        if (promotionError) {
-          throw new Error(
-            rowError(
-              "Promoting patient to receptionist",
-              promotionError,
-            ),
-          );
-        }
-
-        if (!data || typeof data !== "object") {
-          throw new Error(
-            "Promoting patient to receptionist failed: the database did not return the updated profile.",
-          );
-        }
-
-        setPatients((items) =>
-          items.filter((patient) => patient.id !== profileId),
-        );
-      },
-
-    toggleDoctorActive:
-      async (id) => {
-        const doctor =
-          doctors.find(
-            (item) =>
-              item.id === id,
-          );
-
-        if (!doctor) {
-          throw new Error(
-            "The doctor could not be found.",
-          );
-        }
-
-        const {
-          data,
-          error: updateError,
-        } = await supabase
-          .from("doctors")
-          .update({
-            status: doctor.active
-              ? "inactive"
-              : "active",
-          })
-          .eq("id", id)
-          .select()
-          .single();
-
-        if (updateError) {
-          throw new Error(
-            rowError(
-              "Updating doctor availability",
-              updateError,
-            ),
-          );
-        }
-
-        const updated =
-          mapDoctor(data as Row);
-
-        setDoctors((items) =>
-          items.map((item) =>
-            item.id === id
-              ? {
-                  ...updated,
-                  name: doctor.name,
-                }
-              : item,
-          ),
-        );
-      },
+      setDoctors((items) =>
+        items.map((item) =>
+          item.id === id
+            ? {
+                ...updated,
+                name: doctor.name,
+              }
+            : item,
+        ),
+      );
+    },
 
     /*
      * BILLING
      */
-    createInvoice: async (
-      appointmentId,
-      items,
-    ) => {
-      const appointment =
-        appointments.find(
-          (item) =>
-            item.id ===
-            appointmentId,
-        );
+    createInvoice: async (appointmentId, items) => {
+      const appointment = appointments.find((item) => item.id === appointmentId);
 
       if (!appointment) {
-        throw new Error(
-          "The appointment could not be found.",
-        );
+        throw new Error("The appointment could not be found.");
       }
 
-      const {
-        data,
-        error: insertError,
-      } = await supabase
+      const { data, error: insertError } = await supabase
         .from("bills")
         .insert({
-          appointment_id:
-            appointmentId,
-          patient_id:
-            appointment.patientId,
-          amount:
-            items.reduce(
-              (sum, item) =>
-                sum + item.amount,
-              0,
-            ),
+          appointment_id: appointmentId,
+          patient_id: appointment.patientId,
+          amount: items.reduce((sum, item) => sum + item.amount, 0),
           items,
           status: "unpaid",
         })
@@ -1125,63 +704,35 @@ export function ClinicProvider({
         .single();
 
       if (insertError) {
-        throw new Error(
-          rowError(
-            "Creating bill",
-            insertError,
-          ),
-        );
+        throw new Error(rowError("Creating bill", insertError));
       }
 
       setInvoices((existing) => [
         mapInvoice({
           ...(data as Row),
-          doctor_id:
-            appointment.doctorId,
+          doctor_id: appointment.doctorId,
         }),
         ...existing,
       ]);
     },
 
-    markInvoicePaid: async (
-      id,
-      method,
-    ) => {
-      const {
-        data,
-        error: updateError,
-      } = await supabase
+    markInvoicePaid: async (id, method) => {
+      const { data, error: updateError } = await supabase
         .from("bills")
         .update({
           status: "paid",
           payment_method: method,
-          paid_at:
-            new Date().toISOString(),
+          paid_at: new Date().toISOString(),
         })
-        .eq(
-          "id",
-          invoices.find(
-            (invoice) =>
-              invoice.id === id,
-          )?.databaseId ?? id,
-        )
+        .eq("id", invoices.find((invoice) => invoice.id === id)?.databaseId ?? id)
         .select()
         .single();
 
       if (updateError) {
-        throw new Error(
-          rowError(
-            "Recording payment",
-            updateError,
-          ),
-        );
+        throw new Error(rowError("Recording payment", updateError));
       }
 
-      const existing =
-        invoices.find(
-          (invoice) =>
-            invoice.id === id,
-        );
+      const existing = invoices.find((invoice) => invoice.id === id);
 
       setInvoices((items) =>
         items.map((item) =>
@@ -1189,12 +740,9 @@ export function ClinicProvider({
             ? {
                 ...mapInvoice({
                   ...(data as Row),
-                  doctor_id:
-                    existing?.doctorId,
+                  doctor_id: existing?.doctorId,
                 }),
-                doctorId:
-                  existing?.doctorId ??
-                  "",
+                doctorId: existing?.doctorId ?? "",
               }
             : item,
         ),
@@ -1204,29 +752,19 @@ export function ClinicProvider({
     /*
      * SLOT AVAILABILITY
      */
-    isSlotTaken: (
-      doctorId,
-      date,
-      slot,
-    ) =>
+    isSlotTaken: (doctorId, date, slot) =>
       appointments.some(
         (appointment) =>
-          appointment.doctorId ===
-            doctorId &&
-          appointment.date ===
-            date &&
-          appointment.slot ===
-            slot &&
-          appointment.status !==
-            "Cancelled",
+          appointment.doctorId === doctorId &&
+          appointment.date === date &&
+          appointment.slot === slot &&
+          appointment.status !== "Cancelled",
       ),
   };
 
   if (isAuthenticated && loading) {
     return (
-      <ClinicContext.Provider
-        value={value}
-      >
+      <ClinicContext.Provider value={value}>
         <div className="flex min-h-screen items-center justify-center bg-background">
           <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
         </div>
@@ -1236,26 +774,19 @@ export function ClinicProvider({
 
   if (isAuthenticated && error) {
     return (
-      <ClinicContext.Provider
-        value={value}
-      >
+      <ClinicContext.Provider value={value}>
         <div className="flex min-h-screen items-center justify-center bg-background px-4">
           <div className="w-full max-w-lg rounded-lg border border-border bg-card p-6 shadow-sm">
             <h1 className="text-lg font-semibold text-foreground">
-              Clinic data could not
-              be loaded
+              Clinic data could not be loaded
             </h1>
 
-            <p className="mt-2 text-sm leading-6 text-muted-foreground">
-              {error}
-            </p>
+            <p className="mt-2 text-sm leading-6 text-muted-foreground">{error}</p>
 
             <button
               type="button"
               className="mt-5 inline-flex h-10 items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground"
-              onClick={() =>
-                void reload()
-              }
+              onClick={() => void reload()}
             >
               Try again
             </button>
@@ -1265,25 +796,14 @@ export function ClinicProvider({
     );
   }
 
-  return (
-    <ClinicContext.Provider
-      value={value}
-    >
-      {children}
-    </ClinicContext.Provider>
-  );
+  return <ClinicContext.Provider value={value}>{children}</ClinicContext.Provider>;
 }
 
 export function useClinic() {
-  const context =
-    React.useContext(
-      ClinicContext,
-    );
+  const context = React.useContext(ClinicContext);
 
   if (!context) {
-    throw new Error(
-      "useClinic must be used inside ClinicProvider",
-    );
+    throw new Error("useClinic must be used inside ClinicProvider");
   }
 
   return context;

@@ -1,5 +1,5 @@
 import * as React from "react";
-import { ListPlus, LoaderCircle, MessageSquarePlus, Send, Sparkles } from "lucide-react";
+import { ListPlus, LoaderCircle, MessageSquarePlus, Send, Sparkles, MoreHorizontal, Edit2, Trash2, Check, X } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { Button } from "@/components/ui/button";
 import {
@@ -11,10 +11,13 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import { supabase } from "@/lib/supabase/client";
 import { useAuth } from "@/lib/auth/store";
+import { useTheme } from "@/lib/theme/theme-context";
 import type { Role } from "@/lib/clinic/types";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
 type Message = { id: string; role: "user" | "assistant"; text: string };
 type Conversation = { id: string; title: string | null; created_at: string };
@@ -24,11 +27,15 @@ const ASSISTANT_LABEL: Record<Role, string> = {
   doctor: "Clinical Assistant",
   receptionist: "Front Desk Assistant",
 };
+
 const PATIENT_PROMPTS = [
   "Who are the doctors at CareBridge?",
   "What appointments do I have?",
   "Help me book an appointment",
 ];
+
+const PROMPT_COLORS = ["3d-sage", "3d-mist", "3d-rose"] as const;
+
 const PATIENT_ACTIONS = [
   ["Find a doctor", "Show me the doctors at CareBridge."],
   ["Check available slots", "Help me find an available appointment slot."],
@@ -39,27 +46,73 @@ const PATIENT_ACTIONS = [
   ["Cancel an appointment", "Help me cancel an appointment."],
   ["Reschedule an appointment", "Help me reschedule an appointment."],
 ] as const;
+
 const titleFor = (message: string) =>
   message.trim().replace(/\s+/g, " ").slice(0, 60) || "New conversation";
 
 function AssistantMessage({ text }: { text: string }) {
+  const { theme } = useTheme();
+  
   return (
     <ReactMarkdown
       components={{
         h1: ({ children }) => (
-          <h3 className="mb-2 text-base font-semibold leading-6">{children}</h3>
+          <h3 className={cn(
+            "mb-2 text-base font-semibold leading-6",
+            theme === "calm" ? "text-[#172a25]" : "text-[#1a1a2e]"
+          )}>
+            {children}
+          </h3>
         ),
-        h2: ({ children }) => <h4 className="mb-2 font-semibold leading-6">{children}</h4>,
-        h3: ({ children }) => <h5 className="mb-2 font-medium leading-6">{children}</h5>,
-        p: ({ children }) => <p className="mb-3 last:mb-0">{children}</p>,
+        h2: ({ children }) => (
+          <h4 className={cn(
+            "mb-2 font-semibold leading-6",
+            theme === "calm" ? "text-[#172a25]" : "text-[#1a1a2e]"
+          )}>
+            {children}
+          </h4>
+        ),
+        h3: ({ children }) => (
+          <h5 className={cn(
+            "mb-2 font-medium leading-6",
+            theme === "calm" ? "text-[#172a25]" : "text-[#1a1a2e]"
+          )}>
+            {children}
+          </h5>
+        ),
+        p: ({ children }) => (
+          <p className={cn(
+            "mb-3 last:mb-0",
+            theme === "calm" ? "text-[#5f6b66]" : "text-[#666666]"
+          )}>
+            {children}
+          </p>
+        ),
         ol: ({ children }) => (
-          <ol className="mb-3 list-decimal space-y-1 pl-5 last:mb-0">{children}</ol>
+          <ol className={cn(
+            "mb-3 list-decimal space-y-1 pl-5 last:mb-0",
+            theme === "calm" ? "text-[#5f6b66]" : "text-[#666666]"
+          )}>
+            {children}
+          </ol>
         ),
         ul: ({ children }) => (
-          <ul className="mb-3 list-disc space-y-1 pl-5 last:mb-0">{children}</ul>
+          <ul className={cn(
+            "mb-3 list-disc space-y-1 pl-5 last:mb-0",
+            theme === "calm" ? "text-[#5f6b66]" : "text-[#666666]"
+          )}>
+            {children}
+          </ul>
         ),
         li: ({ children }) => <li>{children}</li>,
-        strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
+        strong: ({ children }) => (
+          <strong className={cn(
+            "font-semibold",
+            theme === "calm" ? "text-[#172a25]" : "text-[#1a1a2e]"
+          )}>
+            {children}
+          </strong>
+        ),
       }}
     >
       {text}
@@ -67,8 +120,105 @@ function AssistantMessage({ text }: { text: string }) {
   );
 }
 
+function ConversationItem({ 
+  conversation, 
+  isSelected, 
+  onSelect, 
+  onRename, 
+  onDelete,
+  isEditing,
+  editTitle,
+  setEditTitle,
+  onSaveEdit,
+  onCancelEdit
+}: { 
+  conversation: Conversation;
+  isSelected: boolean;
+  onSelect: () => void;
+  onRename: () => void;
+  onDelete: () => void;
+  isEditing: boolean;
+  editTitle: string;
+  setEditTitle: (title: string) => void;
+  onSaveEdit: () => void;
+  onCancelEdit: () => void;
+}) {
+  const { theme } = useTheme();
+  
+  if (isEditing) {
+    return (
+      <div className={cn(
+        "flex items-center gap-2 rounded-[10px] px-3 py-2.5",
+        theme === "calm" ? "bg-[#f1eee6]" : "bg-[#f5f0e8]"
+      )}>
+        <Input
+          value={editTitle}
+          onChange={(e) => setEditTitle(e.target.value)}
+          className="h-8 flex-1 text-sm"
+          autoFocus
+          onKeyDown={(e) => {
+            if (e.key === "Enter") onSaveEdit();
+            if (e.key === "Escape") onCancelEdit();
+          }}
+        />
+        <Button size="icon" variant="ghost" onClick={onSaveEdit} className="h-6 w-6">
+          <Check className="size-3" />
+        </Button>
+        <Button size="icon" variant="ghost" onClick={onCancelEdit} className="h-6 w-6">
+          <X className="size-3" />
+        </Button>
+      </div>
+    );
+  }
+  
+  return (
+    <div className={cn(
+      "group flex items-center gap-2 rounded-[10px] px-3 py-2.5 transition-colors",
+      isSelected
+        ? theme === "calm" 
+          ? "bg-[#123f35] text-white" 
+          : "bg-[#2d5a3d] text-white"
+        : theme === "calm"
+          ? "text-[#5f6b66] hover:bg-[#f1eee6] hover:text-[#172a25]"
+          : "text-[#666666] hover:bg-[#f5f0e8] hover:text-[#1a1a2e]"
+    )}>
+      <button
+        onClick={onSelect}
+        className="flex-1 truncate text-left text-sm"
+      >
+        {conversation.title || "New conversation"}
+      </button>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className={cn(
+              "h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity",
+              isSelected && "opacity-100"
+            )}
+          >
+            <MoreHorizontal className="size-3" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-48">
+          <DropdownMenuItem onClick={onRename}>
+            <Edit2 className="mr-2 size-4" />
+            Rename
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={onDelete} className="text-red-600">
+            <Trash2 className="mr-2 size-4" />
+            Delete
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </div>
+  );
+}
+
 export function CareBridgeAiPanel() {
   const { user } = useAuth();
+  const { theme } = useTheme();
   const [conversations, setConversations] = React.useState<Conversation[]>([]);
   const [selectedId, setSelectedId] = React.useState<string | null>(null);
   const [messages, setMessages] = React.useState<Message[]>([]);
@@ -76,6 +226,8 @@ export function CareBridgeAiPanel() {
   const [isLoading, setIsLoading] = React.useState(false);
   const [isSending, setIsSending] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
+  const [editingId, setEditingId] = React.useState<string | null>(null);
+  const [editTitle, setEditTitle] = React.useState("");
   const bottomRef = React.useRef<HTMLDivElement>(null);
   const role = user?.role ?? "patient";
   const firstName = user?.name?.replace(/^Dr\.\s+/i, "").split(" ")[0] || "there";
@@ -126,6 +278,7 @@ export function CareBridgeAiPanel() {
   React.useEffect(() => {
     void loadConversations();
   }, [loadConversations]);
+
   React.useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
   }, [error, isLoading, isSending, messages]);
@@ -134,6 +287,7 @@ export function CareBridgeAiPanel() {
     setSelectedId(conversationId);
     await loadMessages(conversationId);
   };
+
   const startConversation = async () => {
     if (!user || isSending) return;
     setError(null);
@@ -147,6 +301,56 @@ export function CareBridgeAiPanel() {
     setConversations((current) => [data, ...current]);
     setSelectedId(data.id);
     setMessages([]);
+  };
+
+  const renameConversation = async (conversationId: string, newTitle: string) => {
+    if (!newTitle.trim()) return;
+    
+    const { error: updateError } = await supabase
+      .from("ai_conversations")
+      .update({ title: newTitle.trim(), updated_at: new Date().toISOString() })
+      .eq("id", conversationId);
+      
+    if (updateError) {
+      toast.error("Failed to rename conversation");
+      return;
+    }
+    
+    setConversations((current) =>
+      current.map((conv) =>
+        conv.id === conversationId ? { ...conv, title: newTitle.trim() } : conv
+      )
+    );
+    
+    setEditingId(null);
+    toast.success("Conversation renamed");
+  };
+
+  const deleteConversation = async (conversationId: string) => {
+    const { error: deleteError } = await supabase
+      .from("ai_conversations")
+      .delete()
+      .eq("id", conversationId);
+      
+    if (deleteError) {
+      toast.error("Failed to delete conversation");
+      return;
+    }
+    
+    setConversations((current) => current.filter((conv) => conv.id !== conversationId));
+    
+    if (selectedId === conversationId) {
+      const remaining = conversations.filter((conv) => conv.id !== conversationId);
+      if (remaining.length > 0) {
+        setSelectedId(remaining[0].id);
+        await loadMessages(remaining[0].id);
+      } else {
+        setSelectedId(null);
+        setMessages([]);
+      }
+    }
+    
+    toast.success("Conversation deleted");
   };
 
   const sendMessage = async (messageToSend = draft) => {
@@ -234,40 +438,95 @@ export function CareBridgeAiPanel() {
   };
 
   return (
-    <section className="flex min-h-[calc(100vh-4rem)] flex-col overflow-hidden rounded-xl border border-border bg-card shadow-sm">
-      <header className="border-b border-border px-5 py-5">
+    <section className={cn(
+      "flex min-h-[calc(100vh-4rem)] flex-col overflow-hidden rounded-xl border",
+      theme === "calm" 
+        ? "border-[rgba(23,42,37,0.08)] bg-white" 
+        : "border-[rgba(26,26,46,0.1)] bg-white"
+    )}>
+      <header className={cn(
+        "border-b px-5 py-5",
+        theme === "calm" 
+          ? "border-[rgba(23,42,37,0.08)]" 
+          : "border-[rgba(26,26,46,0.1)]"
+      )}>
         <div className="flex items-center gap-2">
-          <span className="grid size-8 place-items-center rounded-md bg-primary text-primary-foreground">
+          <span className={cn(
+            "grid size-8 place-items-center rounded-md text-white",
+            theme === "calm" ? "bg-[#123f35]" : "bg-[#2d5a3d]"
+          )}>
             <Sparkles className="size-4" />
           </span>
           <h1 className="font-display text-xl">CareBridge AI</h1>
         </div>
-        <p className="mt-1 text-sm text-muted-foreground">{ASSISTANT_LABEL[role]}</p>
+        <p className={cn(
+          "mt-1 text-sm",
+          theme === "calm" ? "text-[#5f6b66]" : "text-[#666666]"
+        )}>
+          {ASSISTANT_LABEL[role]}
+        </p>
       </header>
+      
       <div className="flex min-h-0 flex-1">
-        <aside className="flex w-36 shrink-0 flex-col border-r border-border bg-linen/30 p-2 sm:w-44">
+        {/* Sidebar */}
+        <aside className={cn(
+          "flex w-64 shrink-0 flex-col border-r p-4",
+          theme === "calm" 
+            ? "border-[rgba(23,42,37,0.08)] bg-[#f1eee6]" 
+            : "border-[rgba(26,26,46,0.1)] bg-[#f5f0e8]"
+        )}>
           <Button
             size="sm"
-            className="mb-2 w-full justify-start"
+            variant={theme === "vibrant" ? "3d-primary" : undefined}
+            className={cn(
+              "mb-4 w-full justify-start",
+              theme === "calm" 
+                ? "bg-[#123f35] text-white hover:bg-[#0b2e27]" 
+                : ""
+            )}
             onClick={() => void startConversation()}
             disabled={isSending}
           >
             <MessageSquarePlus className="size-4" /> New chat
           </Button>
+          
           <div className="min-h-0 flex-1 space-y-1 overflow-y-auto">
-            {conversations.map((conversation) => (
-              <Button
-                key={conversation.id}
-                variant={conversation.id === selectedId ? "secondary" : "ghost"}
-                className="h-auto w-full justify-start whitespace-normal px-2 py-2 text-left text-xs leading-4"
-                onClick={() => void selectConversation(conversation.id)}
-                disabled={isSending}
-              >
-                <span className="line-clamp-2">{conversation.title || "New conversation"}</span>
-              </Button>
-            ))}
+            {conversations.length === 0 ? (
+              <div className={cn(
+                "rounded-[10px] border border-dashed p-4 text-center text-sm",
+                theme === "calm" 
+                  ? "border-[rgba(23,42,37,0.15)] text-[#5f6b66]" 
+                  : "border-[rgba(26,26,46,0.15)] text-[#666666]"
+              )}>
+                No conversations yet
+              </div>
+            ) : (
+              conversations.map((conversation) => (
+                <ConversationItem
+                  key={conversation.id}
+                  conversation={conversation}
+                  isSelected={conversation.id === selectedId}
+                  onSelect={() => void selectConversation(conversation.id)}
+                  onRename={() => {
+                    setEditingId(conversation.id);
+                    setEditTitle(conversation.title || "");
+                  }}
+                  onDelete={() => void deleteConversation(conversation.id)}
+                  isEditing={editingId === conversation.id}
+                  editTitle={editTitle}
+                  setEditTitle={setEditTitle}
+                  onSaveEdit={() => void renameConversation(conversation.id, editTitle)}
+                  onCancelEdit={() => {
+                    setEditingId(null);
+                    setEditTitle("");
+                  }}
+                />
+              ))
+            )}
           </div>
         </aside>
+        
+        {/* Main Chat Area */}
         <div className="flex min-w-0 flex-1 flex-col">
           <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-4 py-5">
             {isLoading ? (
@@ -276,22 +535,38 @@ export function CareBridgeAiPanel() {
               </div>
             ) : messages.length === 0 ? (
               <div className="m-auto w-full max-w-sm text-center">
-                <span className="mx-auto grid size-11 place-items-center rounded-full bg-sage text-sage-foreground">
+                <span className={cn(
+                  "mx-auto grid size-11 place-items-center rounded-full",
+                  theme === "calm" 
+                    ? "bg-[#dce8e1] text-[#234d43]" 
+                    : "bg-[#a8e6cf] text-[#1e5e4e]"
+                )}>
                   <Sparkles className="size-5" />
                 </span>
-                <p className="font-display mt-4 text-xl">
+                <p className={cn(
+                  "font-display mt-4 text-xl",
+                  theme === "calm" ? "text-[#172a25]" : "text-[#1a1a2e]"
+                )}>
                   Hi {firstName}. How can I help you today?
                 </p>
-                <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                <p className={cn(
+                  "mt-2 text-sm leading-6",
+                  theme === "calm" ? "text-[#5f6b66]" : "text-[#666666]"
+                )}>
                   I can help you find your way around CareBridge.
                 </p>
                 {role === "patient" && (
                   <div className="mt-5 flex flex-col items-stretch gap-2 text-left">
-                    {PATIENT_PROMPTS.map((prompt) => (
+                    {PATIENT_PROMPTS.map((prompt, index) => (
                       <Button
                         key={prompt}
-                        variant="outline"
-                        className="h-auto justify-start whitespace-normal px-3 py-2.5 text-left text-xs leading-5"
+                        variant={theme === "vibrant" ? PROMPT_COLORS[index % PROMPT_COLORS.length] : "outline"}
+                        className={cn(
+                          "h-auto justify-start whitespace-normal px-3 py-2.5 text-left text-xs leading-5",
+                          theme === "calm" 
+                            ? "border-[rgba(23,42,37,0.15)] text-[#172a25] hover:bg-[#f1eee6]" 
+                            : ""
+                        )}
                         onClick={() => void sendMessage(prompt)}
                         disabled={isSending}
                       >
@@ -309,8 +584,12 @@ export function CareBridgeAiPanel() {
                     className={cn(
                       "max-w-[92%] rounded-[12px] px-3.5 py-3 text-sm leading-6",
                       message.role === "user"
-                        ? "ml-auto bg-primary text-primary-foreground"
-                        : "border border-border bg-card text-foreground",
+                        ? theme === "calm"
+                          ? "ml-auto bg-[#123f35] text-white"
+                          : "ml-auto bg-[#2d5a3d] text-white"
+                        : theme === "calm"
+                          ? "border border-[rgba(23,42,37,0.08)] bg-[#f7f2e9] text-[#172a25]"
+                          : "border border-[rgba(26,26,46,0.1)] bg-[#faf6f0] text-[#1a1a2e]"
                     )}
                   >
                     {message.role === "assistant" ? (
@@ -321,21 +600,38 @@ export function CareBridgeAiPanel() {
                   </div>
                 ))}
                 {isSending && (
-                  <div className="flex w-fit items-center gap-2 rounded-[12px] border border-border bg-card px-3.5 py-3 text-sm text-muted-foreground">
+                  <div className={cn(
+                    "flex w-fit items-center gap-2 rounded-[12px] border px-3.5 py-3 text-sm",
+                    theme === "calm" 
+                      ? "border-[rgba(23,42,37,0.08)] bg-[#f7f2e9] text-[#5f6b66]" 
+                      : "border-[rgba(26,26,46,0.1)] bg-[#faf6f0] text-[#666666]"
+                  )}>
                     <LoaderCircle className="size-4 animate-spin" /> Thinking…
                   </div>
                 )}
               </div>
             )}
             {error && (
-              <p className="mt-4 rounded-md border border-rose/70 bg-rose/50 px-3 py-2 text-sm text-rose-foreground">
+              <p className={cn(
+                "mt-4 rounded-md border px-3 py-2 text-sm",
+                theme === "calm" 
+                  ? "border-[#f4dddd] bg-[#f4dddd] text-[#7b3d44]" 
+                  : "border-[#ffb6c1] bg-[#ffb6c1] text-[#c2185b]"
+              )}>
                 {error}
               </p>
             )}
             <div ref={bottomRef} />
           </div>
+          
+          {/* Composer */}
           <form
-            className="border-t border-border bg-linen/50 p-4"
+            className={cn(
+              "border-t p-4",
+              theme === "calm" 
+                ? "border-[rgba(23,42,37,0.08)] bg-[#f1eee6]" 
+                : "border-[rgba(26,26,46,0.1)] bg-[#f5f0e8]"
+            )}
             onSubmit={(event) => {
               event.preventDefault();
               void sendMessage();
@@ -351,6 +647,11 @@ export function CareBridgeAiPanel() {
                       size="icon"
                       aria-label="CareBridge AI actions"
                       disabled={isSending || isLoading}
+                      className={cn(
+                        theme === "calm" 
+                          ? "border-[rgba(23,42,37,0.15)]" 
+                          : "border-[rgba(26,26,46,0.15)]"
+                      )}
                     >
                       <ListPlus />
                     </Button>
@@ -377,19 +678,33 @@ export function CareBridgeAiPanel() {
                 }}
                 placeholder="Ask CareBridge AI…"
                 aria-label="Message CareBridge AI"
-                className="min-h-11 max-h-32 resize-y bg-background"
+                className={cn(
+                  "min-h-11 max-h-32 resize-y",
+                  theme === "calm" 
+                    ? "border-[rgba(23,42,37,0.15)] bg-white text-[#172a25] placeholder:text-[#5f6b66] focus:border-[#123f35] focus:ring-1 focus:ring-[#123f35]" 
+                    : "border-[rgba(26,26,46,0.15)] bg-white text-[#1a1a2e] placeholder:text-[#666666] focus:border-[#2d5a3d] focus:ring-1 focus:ring-[#2d5a3d]"
+                )}
                 disabled={isSending || isLoading}
               />
               <Button
                 type="submit"
                 size="icon"
+                variant={theme === "vibrant" ? "3d-primary" : undefined}
                 aria-label="Send message"
                 disabled={isSending || isLoading || !draft.trim()}
+                className={cn(
+                  theme === "calm" 
+                    ? "bg-[#123f35] text-white hover:bg-[#0b2e27]" 
+                    : ""
+                )}
               >
                 {isSending ? <LoaderCircle className="animate-spin" /> : <Send />}
               </Button>
             </div>
-            <p className="mt-2 text-xs text-muted-foreground">
+            <p className={cn(
+              "mt-2 text-xs",
+              theme === "calm" ? "text-[#5f6b66]" : "text-[#666666]"
+            )}>
               Enter to send · Shift+Enter for a new line
             </p>
           </form>

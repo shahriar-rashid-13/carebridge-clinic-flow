@@ -20,6 +20,8 @@ import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/s
 import { Button } from "@/components/ui/button";
 import { useClinic } from "@/lib/clinic/store";
 import { useAuth } from "@/lib/auth/store";
+import { useTheme } from "@/lib/theme/theme-context";
+import { ThemeToggle } from "@/components/theme-toggle";
 import type { Role } from "@/lib/clinic/types";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -60,9 +62,13 @@ const ROLE_LABEL: Record<Role, string> = {
 };
 
 function Wordmark() {
+  const { theme } = useTheme();
   return (
     <Link to="/" className="flex items-center gap-2.5">
-      <span className="grid size-8 shrink-0 place-items-center rounded-md bg-primary text-primary-foreground">
+      <span className={cn(
+        "grid size-8 shrink-0 place-items-center rounded-md text-white",
+        theme === "calm" ? "bg-[#123f35]" : "bg-[#2d5a3d]"
+      )}>
         <Activity className="size-4" />
       </span>
       <span className="font-display text-lg leading-none">CareBridge</span>
@@ -73,6 +79,8 @@ function Wordmark() {
 function NavList({ onNavigate }: { onNavigate?: () => void }) {
   const { role } = useClinic();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const { theme } = useTheme();
+  
   return (
     <nav className="space-y-1">
       {NAV[role].map((item) => {
@@ -83,10 +91,14 @@ function NavList({ onNavigate }: { onNavigate?: () => void }) {
             to={item.to}
             onClick={onNavigate}
             className={cn(
-              "flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors",
+              "flex items-center gap-3 rounded-[10px] px-3 py-2.5 text-sm transition-colors",
               active
-                ? "bg-primary/10 font-medium text-primary"
-                : "text-muted-foreground hover:bg-linen hover:text-foreground",
+                ? theme === "calm" 
+                  ? "bg-[#123f35] font-medium text-white" 
+                  : "bg-[#2d5a3d] font-medium text-white"
+                : theme === "calm"
+                  ? "text-[#5f6b66] hover:bg-[#f1eee6] hover:text-[#172a25]"
+                  : "text-[#666666] hover:bg-[#f5f0e8] hover:text-[#1a1a2e]",
             )}
           >
             <item.icon className="size-4 shrink-0" />
@@ -99,8 +111,18 @@ function NavList({ onNavigate }: { onNavigate?: () => void }) {
 }
 
 function SignOutButton({ onSignOut }: { onSignOut: () => void }) {
+  const { theme } = useTheme();
   return (
-    <Button variant="outline" className="w-full justify-start" onClick={onSignOut}>
+    <Button 
+      variant="outline" 
+      className={cn(
+        "w-full justify-start",
+        theme === "calm" 
+          ? "border-[rgba(23,42,37,0.15)] text-[#172a25] hover:bg-[#f1eee6]" 
+          : "border-[rgba(26,26,46,0.15)] text-[#1a1a2e] hover:bg-[#f5f0e8]"
+      )} 
+      onClick={onSignOut}
+    >
       <LogOut className="size-4" />
       Sign out
     </Button>
@@ -110,6 +132,7 @@ function SignOutButton({ onSignOut }: { onSignOut: () => void }) {
 function CurrentUserCard() {
   const { role, currentDoctor } = useClinic();
   const { user } = useAuth();
+  const { theme } = useTheme();
   const name = user?.name ?? "CareBridge user";
   const sub =
     role === "patient"
@@ -123,14 +146,25 @@ function CurrentUserCard() {
     .map((w) => w[0])
     .join("")
     .slice(0, 2);
+    
   return (
-    <div className="flex min-w-0 items-center gap-3 rounded-md border border-border bg-linen px-3 py-2.5">
-      <span className="grid size-9 shrink-0 place-items-center rounded-full bg-terracotta text-sm font-medium text-terracotta-foreground">
+    <div className={cn(
+      "flex min-w-0 items-center gap-3 rounded-[12px] border px-4 py-3",
+      theme === "calm" 
+        ? "border-[rgba(23,42,37,0.08)] bg-white" 
+        : "border-[rgba(26,26,46,0.1)] bg-white"
+    )}>
+      <span className={cn(
+        "grid size-10 shrink-0 place-items-center rounded-full text-sm font-medium",
+        theme === "calm" 
+          ? "bg-[#ff9670] text-[#8c4d3a]" 
+          : "bg-[#ff8b94] text-[#c73e1d]"
+      )}>
         {initials}
       </span>
       <div className="min-w-0">
-        <p className="truncate text-sm font-medium">{name}</p>
-        <p className="truncate text-xs text-muted-foreground">
+        <p className="truncate text-sm font-medium text-[#172a25]">{name}</p>
+        <p className="truncate text-xs text-[#5f6b66]">
           {ROLE_LABEL[role]} · {sub}
         </p>
       </div>
@@ -142,6 +176,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [open, setOpen] = React.useState(false);
   const navigate = useNavigate();
   const { logout, completeSignOut } = useAuth();
+  const { theme } = useTheme();
 
   const handleSignOut = async () => {
     try {
@@ -155,10 +190,21 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      <aside className="fixed inset-y-0 left-0 z-30 hidden w-72 flex-col border-r border-border bg-linen/50 px-5 py-6 lg:flex">
-        <Wordmark />
-        <div className="mt-7 flex-1 overflow-y-auto">
+    <div className={cn(
+      "min-h-screen",
+      theme === "calm" ? "bg-[#f7f2e9]" : "bg-[#faf6f0]"
+    )}>
+      <aside className={cn(
+        "fixed inset-y-0 left-0 z-30 hidden w-72 flex-col border-r px-5 py-6 lg:flex",
+        theme === "calm" 
+          ? "border-[rgba(23,42,37,0.08)] bg-[#f1eee6]" 
+          : "border-[rgba(26,26,46,0.1)] bg-[#f5f0e8]"
+      )}>
+        <div className="flex items-center justify-between">
+          <Wordmark />
+          <ThemeToggle />
+        </div>
+        <div className="mt-8 flex-1 overflow-y-auto">
           <NavList />
         </div>
         <div className="mt-6">
@@ -169,16 +215,31 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </div>
       </aside>
 
-      <header className="sticky top-0 z-20 flex items-center gap-3 border-b border-border bg-background/90 px-4 py-3 backdrop-blur lg:hidden">
+      <header className={cn(
+        "sticky top-0 z-20 flex items-center gap-3 border-b px-4 py-3 backdrop-blur-sm lg:hidden",
+        theme === "calm" 
+          ? "border-[rgba(23,42,37,0.08)] bg-[#f7f2e9]/95" 
+          : "border-[rgba(26,26,46,0.1)] bg-[#faf6f0]/95"
+      )}>
         <Sheet open={open} onOpenChange={setOpen}>
           <SheetTrigger asChild>
-            <Button variant="outline" size="icon" aria-label="Open menu">
+            <Button variant="outline" size="icon" aria-label="Open menu" className={cn(
+              theme === "calm" 
+                ? "border-[rgba(23,42,37,0.15)]" 
+                : "border-[rgba(26,26,46,0.15)]"
+            )}>
               <Menu className="size-4" />
             </Button>
           </SheetTrigger>
-          <SheetContent side="left" className="w-[280px] bg-linen px-5 py-6">
+          <SheetContent side="left" className={cn(
+            "w-[280px] px-5 py-6",
+            theme === "calm" ? "bg-[#f1eee6]" : "bg-[#f5f0e8]"
+          )}>
             <SheetTitle className="sr-only">Navigation</SheetTitle>
-            <Wordmark />
+            <div className="flex items-center justify-between">
+              <Wordmark />
+              <ThemeToggle />
+            </div>
             <div className="mt-6">
               <NavList onNavigate={() => setOpen(false)} />
             </div>

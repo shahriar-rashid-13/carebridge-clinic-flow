@@ -149,7 +149,8 @@ function BookPage() {
                       onClick={() => setSlot(s)}
                       className={cn(
                         "rounded-full border px-3.5 py-1.5 text-xs transition-colors",
-                        taken && "cursor-not-allowed border-border bg-muted text-muted-foreground/60 line-through",
+                        taken &&
+                          "cursor-not-allowed border-border bg-muted text-muted-foreground/60 line-through",
                         !taken && slot === s && "border-primary bg-primary text-primary-foreground",
                         !taken && slot !== s && "border-border bg-card hover:bg-linen",
                       )}

@@ -1,13 +1,13 @@
-@import "tailwindcss" source(none);
+﻿@import "tailwindcss" source(none);
 @source "../src";
 @import "tw-animate-css";
 
 @custom-variant dark (&:is(.dark *));
 
 /*
- * CareBridge design system — editorial clinical.
- * Warm ivory ground, ink text, forest/sage clinical accents, terracotta + sand
- * for warmth. Serif display (Fraunces) over a clean sans (DM Sans).
+ * CareBridge design system â€” editorial clinical with dual themes.
+ * Theme A: Calm (current) - restrained, neutral
+ * Theme B: Vibrant - expressive, colorful, Fisfis-inspired with 3D effects
  */
 
 @theme inline {
@@ -59,48 +59,98 @@
   --color-chart-5: var(--chart-5);
 }
 
-:root {
+/* Theme A: Calm (Current) */
+:root,
+[data-theme="calm"] {
   --radius: 0.625rem;
-  --background: #f7f4ed;
-  --foreground: #16231f;
-  --ink: #16231f;
+  --background: #f7f2e9;
+  --foreground: #172a25;
+  --ink: #172a25;
   --linen: #f1eee6;
   --card: rgba(255, 255, 255, 0.68);
-  --card-foreground: #16231f;
+  --card-foreground: #172a25;
   --popover: #ffffff;
-  --popover-foreground: #16231f;
-  --primary: #163a32;
+  --popover-foreground: #172a25;
+  --primary: #123f35;
   --primary-foreground: #ffffff;
   --secondary: #e8efe9;
-  --secondary-foreground: #16231f;
+  --secondary-foreground: #172a25;
   --muted: #edf1ee;
   --muted-foreground: #5f6b66;
   --accent: #f1ddd4;
-  --accent-foreground: #16231f;
+  --accent-foreground: #172a25;
   --destructive: #a84b4b;
   --destructive-foreground: #ffffff;
-  --border: #d7ddd8;
+  --border: rgba(23, 42, 37, 0.08);
   --input: #ffffff;
-  --ring: #163a32;
+  --ring: #123f35;
   --sage: #dce8e1;
   --sage-foreground: #234d43;
-  --terracotta: #f1ddd4;
+  --terracotta: #ff9670;
   --terracotta-foreground: #8c4d3a;
-  --sand: #f5e9d2;
+  --sand: #e9d6c7;
   --sand-foreground: #8d6738;
-  --mist: #e9f0ef;
+  --mist: #a9e5f4;
   --mist-foreground: #244a49;
-  --rose: #f4dddd;
+  --rose: #dfa3da;
   --rose-foreground: #7b3d44;
-  --chart-1: #163a32;
+  --chart-1: #123f35;
   --chart-2: #c86b4a;
   --chart-3: #7f9b8d;
   --chart-4: #e9d7b7;
   --chart-5: #dce8e1;
 }
 
+/* Theme B: Vibrant (Fisfis-inspired with 3D effects) */
+[data-theme="vibrant"] {
+  --radius: 0.625rem;
+  --background: #faf6f0;
+  --foreground: #1a1a2e;
+  --ink: #1a1a2e;
+  --linen: #f5f0e8;
+  --card: rgba(255, 255, 255, 0.85);
+  --card-foreground: #1a1a2e;
+  --popover: #ffffff;
+  --popover-foreground: #1a1a2e;
+  --primary: #2d5a3d;
+  --primary-foreground: #ffffff;
+  --secondary: #e8f5e9;
+  --secondary-foreground: #1a1a2e;
+  --muted: #f0f0f0;
+  --muted-foreground: #666666;
+  --accent: #ff6b6b;
+  --accent-foreground: #ffffff;
+  --destructive: #e74c3c;
+  --destructive-foreground: #ffffff;
+  --border: rgba(26, 26, 46, 0.1);
+  --input: #ffffff;
+  --ring: #2d5a3d;
+  --sage: #a8e6cf;
+  --sage-foreground: #1e5e4e;
+  --terracotta: #ff8b94;
+  --terracotta-foreground: #c73e1d;
+  --sand: #ffd93d;
+  --sand-foreground: #b8860b;
+  --mist: #a8d8ea;
+  --mist-foreground: #2c5aa0;
+  --rose: #ffb6c1;
+  --rose-foreground: #c2185b;
+  --chart-1: #2d5a3d;
+  --chart-2: #ff6b6b;
+  --chart-3: #4ecdc4;
+  --chart-4: #ffd93d;
+  --chart-5: #a8e6cf;
+  --ink-strong: #1a1c1e;
+  --pop-terracotta: #fe976c;
+  --pop-mist: #bfe6f5;
+  --pop-rose: #f7dcf5;
+  --pop-sage: #bfe5cd;
+  --pop-sand: #fff09a;
+  --pop-lavender: #dcd3ff;
+}
+
 .dark {
-  --background: #11251f;
+  --background: #0b2e27;
   --foreground: #f6f2eb;
   --linen: #18362f;
   --card: rgba(22, 58, 50, 0.88);
@@ -108,7 +158,7 @@
   --popover: #1a352f;
   --popover-foreground: #f6f2eb;
   --primary: #dce8e1;
-  --primary-foreground: #11251f;
+  --primary-foreground: #0b2e27;
   --secondary: #1c4037;
   --secondary-foreground: #f6f2eb;
   --muted: #1d3a34;
@@ -160,10 +210,177 @@
 
 @layer utilities {
   .editorial-shell {
-    @apply border border-[#d7ddd8] bg-[#f7f4ed] text-[#16231f];
+    @apply border border-[rgba(23,42,37,0.08)] bg-[#f7f2e9] text-[#172a25];
   }
 
   .soft-surface {
-    @apply border border-[#d7ddd8] bg-white/70 backdrop-blur-sm;
+    @apply border border-[rgba(23,42,37,0.08)] bg-white/70 backdrop-blur-sm;
   }
+
+  .eyebrow {
+    @apply text-[11px] font-medium uppercase tracking-[0.22em] text-[#5f6b66];
+  }
+
+  .section-divider {
+    @apply border-t border-[rgba(23,42,37,0.08)];
+  }
+
+  .thin-border {
+    @apply border border-[rgba(23,42,37,0.08)];
+  }
+
+  .thin-border-dark {
+    @apply border border-[rgba(23,42,37,0.15)];
+  }
+
+  .thin-border-light {
+    @apply border border-[rgba(255,255,255,0.1)];
+  }
+
+  .editorial-shadow {
+    @apply shadow-[0_12px_30px_rgba(18,63,53,0.04)];
+  }
+
+  .editorial-shadow-lg {
+    @apply shadow-[0_20px_40px_rgba(18,63,53,0.08)];
+  }
+
+  .editorial-shadow-sm {
+    @apply shadow-[0_8px_16px_rgba(18,63,53,0.03)];
+  }
+
+  /*
+   * Tactile "sticker" surfaces for the vibrant theme: flat fill, thin ink
+   * outline and a hard, unblurred offset shadow. Pressing slides the element
+   * into its shadow. Only active under [data-theme="vibrant"].
+   */
+  [data-theme="vibrant"] .btn-3d {
+    border: 1px solid var(--ink-strong);
+    box-shadow: 3px 3px 0 0 var(--ink-strong);
+    color: var(--ink-strong);
+    font-weight: 600;
+    transition:
+      transform 0.12s cubic-bezier(0.2, 0.8, 0.25, 1),
+      box-shadow 0.12s cubic-bezier(0.2, 0.8, 0.25, 1),
+      filter 0.12s cubic-bezier(0.2, 0.8, 0.25, 1);
+  }
+
+  [data-theme="vibrant"] .btn-3d:hover:not(:disabled) {
+    transform: translate(-1px, -1px);
+    box-shadow: 4px 4px 0 0 var(--ink-strong);
+    filter: brightness(1.03);
+  }
+
+  [data-theme="vibrant"] .btn-3d:active:not(:disabled) {
+    transform: translate(3px, 3px);
+    box-shadow: 0 0 0 0 var(--ink-strong);
+  }
+
+  [data-theme="vibrant"] .btn-3d-primary {
+    background: var(--primary);
+    color: #ffffff;
+  }
+  [data-theme="vibrant"] .btn-3d-terracotta {
+    background: var(--pop-terracotta);
+  }
+  [data-theme="vibrant"] .btn-3d-mist {
+    background: var(--pop-mist);
+  }
+  [data-theme="vibrant"] .btn-3d-rose {
+    background: var(--pop-rose);
+  }
+  [data-theme="vibrant"] .btn-3d-sage {
+    background: var(--pop-sage);
+  }
+  [data-theme="vibrant"] .btn-3d-sand {
+    background: var(--pop-sand);
+  }
+
+  [data-theme="vibrant"] .card-3d {
+    border: 1px solid var(--ink-strong);
+    box-shadow: 5px 5px 0 0 var(--ink-strong);
+    border-radius: 16px;
+  }
+
+  [data-theme="vibrant"] .card-3d > * + * {
+    border-color: rgba(26, 28, 30, 0.12);
+  }
+
+  [data-theme="vibrant"] .stat-card-terracotta {
+    background: var(--pop-terracotta);
+  }
+  [data-theme="vibrant"] .stat-card-mist {
+    background: var(--pop-mist);
+  }
+  [data-theme="vibrant"] .stat-card-sage {
+    background: var(--pop-sage);
+  }
+  [data-theme="vibrant"] .stat-card-sand {
+    background: var(--pop-sand);
+  }
+  [data-theme="vibrant"] .stat-card-rose {
+    background: var(--pop-rose);
+  }
+  [data-theme="vibrant"] .stat-card-lavender {
+    background: var(--pop-lavender);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    [data-theme="vibrant"] .btn-3d,
+    [data-theme="vibrant"] .btn-3d:hover:not(:disabled),
+    [data-theme="vibrant"] .btn-3d:active:not(:disabled) {
+      transition: none;
+      transform: none;
+    }
+  }
+
+  /* Vibrant theme utilities */
+  [data-theme="vibrant"] .vibrant-bg-primary {
+    @apply bg-[#2d5a3d];
+  }
+
+  [data-theme="vibrant"] .vibrant-bg-terracotta {
+    @apply bg-[#ff8b94];
+  }
+
+  [data-theme="vibrant"] .vibrant-bg-mist {
+    @apply bg-[#a8d8ea];
+  }
+
+  [data-theme="vibrant"] .vibrant-bg-rose {
+    @apply bg-[#ffb6c1];
+  }
+
+  [data-theme="vibrant"] .vibrant-bg-sage {
+    @apply bg-[#a8e6cf];
+  }
+
+  [data-theme="vibrant"] .vibrant-bg-sand {
+    @apply bg-[#ffd93d];
+  }
+
+  [data-theme="vibrant"] .vibrant-text-primary {
+    @apply text-[#2d5a3d];
+  }
+
+  [data-theme="vibrant"] .vibrant-text-terracotta {
+    @apply text-[#c73e1d];
+  }
+
+  [data-theme="vibrant"] .vibrant-text-mist {
+    @apply text-[#2c5aa0];
+  }
+
+  [data-theme="vibrant"] .vibrant-text-rose {
+    @apply text-[#c2185b];
+  }
+
+  [data-theme="vibrant"] .vibrant-text-sage {
+    @apply text-[#1e5e4e];
+  }
+
+  [data-theme="vibrant"] .vibrant-text-sand {
+    @apply text-[#b8860b];
+  }
+
 }
