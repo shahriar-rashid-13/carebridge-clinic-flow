@@ -80,7 +80,7 @@ function LandingPage() {
                 ? "border-[rgba(23,42,37,0.15)] bg-transparent text-[#172a25] hover:bg-[#f1eee6]" 
                 : "border-[rgba(26,26,46,0.15)] bg-transparent text-[#1a1a2e] hover:bg-[#f5f0e8]"
             )} asChild>
-              <Link to="/login">Log in</Link>
+              <Link to="/login" search={{ redirect: "/dashboard" }}>Log in</Link>
             </Button>
             <Button className={cn(
               "h-10 text-sm text-white",
@@ -129,7 +129,7 @@ function LandingPage() {
                   )}
                   asChild
                 >
-                  <Link to="/login">
+                  <Link to="/login" search={{ redirect: "/dashboard" }}>
                     Book an appointment <ArrowRight className="ml-2 size-4" />
                   </Link>
                 </Button>
@@ -921,7 +921,7 @@ function LandingPage() {
               )}
               asChild
             >
-              <Link to="/login">Log in</Link>
+              <Link to="/login" search={{ redirect: "/dashboard" }}>Log in</Link>
             </Button>
           </div>
         </div>

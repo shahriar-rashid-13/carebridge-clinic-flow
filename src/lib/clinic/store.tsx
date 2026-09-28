@@ -16,6 +16,7 @@ import type {
   InvoiceItem,
   Medication,
   Patient,
+  Prescription,
   PromotePatientToDoctorInput,
   Role,
 } from "./types";
@@ -183,14 +184,14 @@ const fetchClinicData = async (userId: string, userRole: Role) => {
 
   const profiles = (profilesResult.data ?? []) as Row[];
 
-  const profileById = new Map(profiles.map((profile) => [String(profile.id), profile]));
+  const profileById = new Map(profiles.map((profile) => [String(profile["id"]), profile]));
 
   const doctorRows = (doctorsResult.data ?? []) as Row[];
 
   const doctors = doctorRows.map((doctor) =>
     mapDoctor(
       doctor,
-      (doctor.profile as Row | null | undefined) ?? profileById.get(String(doctor.user_id)),
+      (doctor["profile"] as Row | null | undefined) ?? profileById.get(String(doctor["user_id"])),
     ),
   );
 
@@ -199,7 +200,7 @@ const fetchClinicData = async (userId: string, userRole: Role) => {
 
     doctors,
 
-    patients: profiles.filter((profile) => profile.role === "patient").map(mapProfileToPatient),
+    patients: profiles.filter((profile) => profile["role"] === "patient").map(mapProfileToPatient),
 
     appointments: ((appointmentsResult.data ?? []) as Row[]).map(mapAppointment),
 
@@ -207,18 +208,18 @@ const fetchClinicData = async (userId: string, userRole: Role) => {
 
     invoices: ((billsResult.data ?? []) as Row[]).map((bill) => {
       const appointment = ((appointmentsResult.data ?? []) as Row[]).find(
-        (item) => String(item.id) === String(bill.appointment_id),
+        (item) => String(item["id"]) === String(bill["appointment_id"]),
       );
 
       return mapInvoice({
         ...bill,
-        doctor_id: appointment?.doctor_id,
+        doctor_id: appointment?.["doctor_id"],
       });
     }),
 
     currentDoctorId:
       userRole === "doctor"
-        ? String(doctorRows.find((doctor) => String(doctor.user_id) === userId)?.id ?? "")
+        ? String(doctorRows.find((doctor) => String(doctor["user_id"]) === userId)?.["id"] ?? "")
         : "",
   };
 };
@@ -566,7 +567,7 @@ export function ClinicProvider({ children }: { children: React.ReactNode }) {
         throw new Error(rowError("Updating doctor", doctorError));
       }
 
-      const userId = (data as Row).user_id;
+      const userId = (data as Row)["user_id"];
 
       if (userId && doctor.name.trim()) {
         const { error: profileError } = await supabase

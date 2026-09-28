@@ -45,7 +45,7 @@ function SignupPage() {
       } else {
         toast.success("Account created. Check your email to confirm it, then log in.");
 
-        navigate({ to: "/login" });
+        navigate({ to: "/login", search: { redirect: "/dashboard" } });
       }
     } catch (error) {
       toast.error(
@@ -218,7 +218,7 @@ function SignupPage() {
 
               <div className="text-center text-sm">
                 <span className="text-[#5f6b66]">Already have an account? </span>
-                <Link to="/login" className="font-medium text-[#123f35] hover:underline">
+                <Link to="/login" search={{ redirect: "/dashboard" }} className="font-medium text-[#123f35] hover:underline">
                   Log in instead
                 </Link>
               </div>

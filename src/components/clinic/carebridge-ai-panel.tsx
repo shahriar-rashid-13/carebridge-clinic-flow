@@ -341,9 +341,10 @@ export function CareBridgeAiPanel() {
     
     if (selectedId === conversationId) {
       const remaining = conversations.filter((conv) => conv.id !== conversationId);
-      if (remaining.length > 0) {
-        setSelectedId(remaining[0].id);
-        await loadMessages(remaining[0].id);
+      const next = remaining[0];
+      if (next) {
+        setSelectedId(next.id);
+        await loadMessages(next.id);
       } else {
         setSelectedId(null);
         setMessages([]);
