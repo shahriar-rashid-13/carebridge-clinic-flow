@@ -3,10 +3,11 @@ import { getAvailableSlots, getDoctors } from "./tools-common.ts";
 import { getMyAppointments, getMyBills, getMyPrescriptions, getMyProfile } from "./tools-patient.ts";
 import { getMySchedule, getPatientHistory, getPatientSummary } from "./tools-doctor.ts";
 import { getAppointments, getBills, getUnbilledVisits, searchPatients } from "./tools-receptionist.ts";
+import { proposalTools } from "./actions.ts";
 import type { ToolCall } from "./gateway.ts";
 
-// Read-only tools. Write tools arrive with the confirmation framework (Phase E).
 const REGISTRY: ToolDefinition[] = [
+  ...proposalTools,
   getDoctors,
   getAvailableSlots,
   getMyProfile,

@@ -3,12 +3,22 @@ import type { SupabaseClient } from "npm:@supabase/supabase-js@2";
 export type Role = "patient" | "doctor" | "receptionist";
 export const ROLES: Role[] = ["patient", "doctor", "receptionist"];
 
+export type Proposal = {
+  id: string;
+  action_type: string;
+  summary: string;
+  details: { label: string; value: string }[];
+  status: string;
+  expires_at: string;
+};
+
 export type ToolContext = {
   db: SupabaseClient;
   userId: string;
   role: Role;
   doctorId: string | null;
   today: string;
+  proposals: Proposal[];
 };
 
 export type ToolResult = Record<string, unknown>;
@@ -73,8 +83,11 @@ export function enumArg<T extends string>(
   return args[key] as T;
 }
 
-export function textArg(args: Record<string, unknown>, key: string, max: number): string {
+export function textArg(args: Record<string, unknown>, key: string, max: number): string;
+export function textArg(args: Record<string, unknown>, key: string, max: number, optional: true): string;
+export function textArg(args: Record<string, unknown>, key: string, max: number, optional = false) {
   const value = args[key];
+  if (optional && (value === undefined || value === null || value === "")) return "";
   if (typeof value !== "string" || !value.trim()) throw new ToolInputError(`${key} is required.`);
   if (value.trim().length > max) throw new ToolInputError(`${key} must be at most ${max} characters.`);
   return value.trim();

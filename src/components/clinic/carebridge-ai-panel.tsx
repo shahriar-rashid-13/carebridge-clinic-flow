@@ -14,12 +14,21 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/lib/supabase/client";
 import { useAuth } from "@/lib/auth/store";
+import { useClinic } from "@/lib/clinic/store";
 import { useTheme } from "@/lib/theme/theme-context";
 import type { Role } from "@/lib/clinic/types";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
-type Message = { id: string; role: "user" | "assistant"; text: string };
+type Proposal = {
+  id: string;
+  action_type: string;
+  summary: string;
+  details: { label: string; value: string }[];
+  status: string;
+  expires_at: string;
+};
+type Message = { id: string; role: "user" | "assistant"; text: string; proposals?: Proposal[] | undefined };
 type Conversation = { id: string; title: string | null; created_at: string };
 
 const ASSISTANT_LABEL: Record<Role, string> = {
@@ -55,6 +64,30 @@ type AiV2Response = {
   conversation_id: string;
   user_message_id: string;
   message_id: string;
+  proposals?: Proposal[];
+};
+
+type AiV2ActionResponse = {
+  text: string;
+  user_text: string;
+  conversation_id: string | null;
+  user_message_id: string | null;
+  message_id: string | null;
+  action: { id: string; status: string };
+};
+
+function proposalsFrom(metadata: unknown): Proposal[] | undefined {
+  const proposals = (metadata as { proposals?: unknown } | null)?.proposals;
+  return Array.isArray(proposals) && proposals.length > 0 ? (proposals as Proposal[]) : undefined;
+}
+
+const PROPOSAL_STATUS_LABEL: Record<string, string> = {
+  pending: "Waiting for your confirmation",
+  executing: "Working…",
+  confirmed: "Done",
+  cancelled: "Cancelled",
+  failed: "Failed",
+  expired: "Expired",
 };
 
 async function invokeErrorMessage(error: unknown): Promise<string | null> {
@@ -139,6 +172,72 @@ function AssistantMessage({ text }: { text: string }) {
     >
       {text}
     </ReactMarkdown>
+  );
+}
+
+function ProposalCard({
+  proposal,
+  status,
+  busy,
+  disabled,
+  onResolve,
+}: {
+  proposal: Proposal;
+  status: string;
+  busy: boolean;
+  disabled: boolean;
+  onResolve: (action: "confirm" | "cancel") => void;
+}) {
+  const { theme } = useTheme();
+  const shownStatus =
+    status === "pending" && new Date(proposal.expires_at).getTime() < Date.now() ? "expired" : status;
+
+  return (
+    <div
+      className={cn(
+        "mt-3 rounded-[10px] border bg-white p-3",
+        theme === "calm" ? "border-[rgba(23,42,37,0.15)]" : "border-[rgba(26,26,46,0.15)]",
+      )}
+    >
+      <p className="font-semibold">{proposal.summary}</p>
+      <dl className="mt-2 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-xs">
+        {proposal.details.map((detail) => (
+          <React.Fragment key={detail.label}>
+            <dt className="text-muted-foreground">{detail.label}</dt>
+            <dd className="break-words">{detail.value}</dd>
+          </React.Fragment>
+        ))}
+      </dl>
+      <div className="mt-3 flex items-center gap-2">
+        {shownStatus === "pending" ? (
+          <>
+            <Button
+              type="button"
+              size="sm"
+              className={cn(theme === "calm" ? "bg-[#123f35] text-white hover:bg-[#0b2e27]" : "")}
+              variant={theme === "vibrant" ? "3d-primary" : undefined}
+              disabled={busy || disabled}
+              onClick={() => onResolve("confirm")}
+            >
+              {busy ? <LoaderCircle className="size-4 animate-spin" /> : <Check className="size-4" />} Confirm
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              disabled={busy || disabled}
+              onClick={() => onResolve("cancel")}
+            >
+              <X className="size-4" /> Cancel
+            </Button>
+          </>
+        ) : (
+          <span className="text-xs text-muted-foreground">
+            {PROPOSAL_STATUS_LABEL[shownStatus] ?? shownStatus}
+          </span>
+        )}
+      </div>
+    </div>
   );
 }
 
@@ -240,6 +339,7 @@ function ConversationItem({
 
 export function CareBridgeAiPanel() {
   const { user } = useAuth();
+  const { reload: reloadClinic } = useClinic();
   const { theme } = useTheme();
   const [conversations, setConversations] = React.useState<Conversation[]>([]);
   const [selectedId, setSelectedId] = React.useState<string | null>(null);
@@ -251,28 +351,42 @@ export function CareBridgeAiPanel() {
   const [failedMessage, setFailedMessage] = React.useState<string | null>(null);
   const [editingId, setEditingId] = React.useState<string | null>(null);
   const [editTitle, setEditTitle] = React.useState("");
+  const [actionStatus, setActionStatus] = React.useState<Record<string, string>>({});
+  const [resolvingId, setResolvingId] = React.useState<string | null>(null);
   const bottomRef = React.useRef<HTMLDivElement>(null);
   const role = user?.role ?? "patient";
   const firstName = user?.name?.replace(/^Dr\.\s+/i, "").split(" ")[0] || "there";
+
+  const refreshActionStatus = React.useCallback(async (ids: string[]) => {
+    if (ids.length === 0) return;
+    const { data } = await supabase.from("ai_pending_actions").select("id, status").in("id", ids);
+    if (data)
+      setActionStatus((current) => ({
+        ...current,
+        ...Object.fromEntries(data.map((row) => [row.id, row.status])),
+      }));
+  }, []);
 
   const loadMessages = React.useCallback(async (conversationId: string) => {
     setIsLoading(true);
     setError(null);
     const { data, error: loadError } = await supabase
       .from("ai_messages")
-      .select("id, role, content")
+      .select(USE_AI_V2 ? "id, role, content, metadata" : "id, role, content")
       .eq("conversation_id", conversationId)
       .order("created_at", { ascending: true });
     setIsLoading(false);
     if (loadError || !data) return setError("Unable to load this conversation. Please try again.");
-    setMessages(
-      data.map((message) => ({
-        id: message.id,
-        role: message.role as Message["role"],
-        text: message.content,
-      })),
-    );
-  }, []);
+    const rows = data as unknown as { id: string; role: string; content: string; metadata?: unknown }[];
+    const loaded: Message[] = rows.map((message) => ({
+      id: message.id,
+      role: message.role as Message["role"],
+      text: message.content,
+      proposals: proposalsFrom(message.metadata),
+    }));
+    setMessages(loaded);
+    void refreshActionStatus(loaded.flatMap(({ proposals }) => proposals?.map(({ id }) => id) ?? []));
+  }, [refreshActionStatus]);
 
   const loadConversations = React.useCallback(async () => {
     if (!user) return;
@@ -406,7 +520,7 @@ export function CareBridgeAiPanel() {
         ...current.map((message) =>
           message.id === pendingId ? { ...message, id: reply.user_message_id! } : message,
         ),
-        { id: reply.message_id!, role: "assistant", text: replyText },
+        { id: reply.message_id!, role: "assistant", text: replyText, proposals: proposalsFrom(reply) },
       ]);
       setSelectedId(savedConversationId);
       setConversations((current) => {
@@ -424,6 +538,44 @@ export function CareBridgeAiPanel() {
       setError(serverMessage || "Unable to send your message. Please try again.");
     } finally {
       setIsSending(false);
+    }
+  };
+
+  const resolveProposal = async (proposal: Proposal, action: "confirm" | "cancel") => {
+    if (resolvingId) return;
+    setResolvingId(proposal.id);
+    setError(null);
+    try {
+      const { data, error: invokeError } = await supabase.functions.invoke(AI_FUNCTION, {
+        body: {
+          action,
+          pending_action_id: proposal.id,
+          ...(selectedId ? { conversation_id: selectedId } : {}),
+        },
+      });
+      if (invokeError) throw new Error((await invokeErrorMessage(invokeError)) ?? "");
+      const reply = data as Partial<AiV2ActionResponse> | null;
+      if (!reply || typeof reply.text !== "string" || !reply.action) throw new Error("");
+      const { status } = reply.action;
+      setActionStatus((current) => ({ ...current, [proposal.id]: status }));
+      const stamp = Date.now();
+      setMessages((current) => [
+        ...current,
+        { id: reply.user_message_id ?? `action-user-${stamp}`, role: "user", text: reply.user_text ?? "" },
+        { id: reply.message_id ?? `action-reply-${stamp}`, role: "assistant", text: reply.text! },
+      ]);
+      if (status === "confirmed") {
+        toast.success("Done");
+        void reloadClinic();
+      } else if (status === "failed") {
+        toast.error("The action could not be completed");
+      }
+    } catch (resolveError) {
+      const serverMessage = resolveError instanceof Error ? resolveError.message : "";
+      toast.error(serverMessage || "Unable to update this proposal. Please try again.");
+      void refreshActionStatus([proposal.id]);
+    } finally {
+      setResolvingId(null);
     }
   };
 
@@ -672,6 +824,16 @@ export function CareBridgeAiPanel() {
                     ) : (
                       message.text
                     )}
+                    {message.proposals?.map((proposal) => (
+                      <ProposalCard
+                        key={proposal.id}
+                        proposal={proposal}
+                        status={actionStatus[proposal.id] ?? proposal.status}
+                        busy={resolvingId === proposal.id}
+                        disabled={isSending || resolvingId !== null}
+                        onResolve={(action) => void resolveProposal(proposal, action)}
+                      />
+                    ))}
                   </div>
                 ))}
                 {isSending && (

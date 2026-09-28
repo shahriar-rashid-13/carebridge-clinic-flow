@@ -1,4 +1,7 @@
 export const MODEL_ALIAS = "carebridge-agent";
+// Used for the remaining rounds of a turn after the gateway fell back, because
+// Gemini rejects tool-call history that lacks its own thought signatures.
+export const FALLBACK_MODEL_ALIAS = "carebridge-agent-fallback";
 
 export type ToolCall = {
   id: string;
@@ -17,12 +20,13 @@ export type GatewayResult =
       // (for example Gemini thought signatures) survive the tool round-trip.
       rawMessage: GatewayMessage;
       model: string | null;
-      attemptedFallbacks: number;
+      servedByFallback: boolean;
       usage: unknown;
     }
   | { ok: false; status: number; error: string; detail: string };
 
 export async function callGateway(options: {
+  model?: string;
   messages: GatewayMessage[];
   tools?: unknown[];
   toolChoice?: "auto" | "none";
@@ -34,7 +38,7 @@ export async function callGateway(options: {
     return { ok: false, status: 500, error: "AI service is not configured.", detail: "missing gateway env" };
   }
 
-  const body: Record<string, unknown> = { model: MODEL_ALIAS, messages: options.messages };
+  const body: Record<string, unknown> = { model: options.model ?? MODEL_ALIAS, messages: options.messages };
   if (options.tools?.length) {
     body["tools"] = options.tools;
     body["tool_choice"] = options.toolChoice ?? "auto";
@@ -71,6 +75,11 @@ export async function callGateway(options: {
   if (!message || typeof message !== "object") {
     return { ok: false, status: 502, error: "AI service returned an invalid reply.", detail: "missing message" };
   }
+  const model = typeof data?.model === "string" ? data.model : null;
+  const attemptedFallbacks = Number(response.headers.get("x-litellm-attempted-fallbacks")) || 0;
+  const servedByFallback =
+    attemptedFallbacks > 0 ||
+    (model !== null && model !== MODEL_ALIAS && !model.toLowerCase().includes("gemini"));
   const toolCalls: ToolCall[] = Array.isArray(message.tool_calls)
     ? message.tool_calls.filter((call: any) => call?.type === "function" && typeof call?.id === "string")
     : [];
@@ -79,8 +88,8 @@ export async function callGateway(options: {
     content: typeof message.content === "string" ? message.content : null,
     toolCalls,
     rawMessage: { ...message, role: "assistant" },
-    model: typeof data?.model === "string" ? data.model : null,
-    attemptedFallbacks: Number(response.headers.get("x-litellm-attempted-fallbacks")) || 0,
+    model,
+    servedByFallback,
     usage: data?.usage ?? null,
   };
 }
