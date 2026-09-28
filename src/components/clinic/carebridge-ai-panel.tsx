@@ -47,6 +47,28 @@ const PATIENT_ACTIONS = [
   ["Reschedule an appointment", "Help me reschedule an appointment."],
 ] as const;
 
+const AI_FUNCTION = import.meta.env["VITE_AI_FUNCTION"] || "carebridge-ai";
+const USE_AI_V2 = AI_FUNCTION === "carebridge-ai-v2";
+
+type AiV2Response = {
+  text: string;
+  conversation_id: string;
+  user_message_id: string;
+  message_id: string;
+};
+
+async function invokeErrorMessage(error: unknown): Promise<string | null> {
+  const context = (error as { context?: unknown })?.context;
+  if (!(context instanceof Response)) return null;
+  try {
+    const body: unknown = await context.clone().json();
+    const message = (body as { error?: unknown })?.error;
+    return typeof message === "string" ? message : null;
+  } catch {
+    return null;
+  }
+}
+
 const titleFor = (message: string) =>
   message.trim().replace(/\s+/g, " ").slice(0, 60) || "New conversation";
 
@@ -226,6 +248,7 @@ export function CareBridgeAiPanel() {
   const [isLoading, setIsLoading] = React.useState(false);
   const [isSending, setIsSending] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
+  const [failedMessage, setFailedMessage] = React.useState<string | null>(null);
   const [editingId, setEditingId] = React.useState<string | null>(null);
   const [editTitle, setEditTitle] = React.useState("");
   const bottomRef = React.useRef<HTMLDivElement>(null);
@@ -354,9 +377,60 @@ export function CareBridgeAiPanel() {
     toast.success("Conversation deleted");
   };
 
+  const sendMessageV2 = async (text: string) => {
+    if (!user) return;
+    setDraft("");
+    setError(null);
+    setFailedMessage(null);
+    setIsSending(true);
+    const conversationId = selectedId;
+    const wasEmpty = messages.length === 0;
+    const pendingId = `pending-${Date.now()}`;
+    setMessages((current) => [...current, { id: pendingId, role: "user", text }]);
+    try {
+      const { data, error: invokeError } = await supabase.functions.invoke(AI_FUNCTION, {
+        body: { message: text, ...(conversationId ? { conversation_id: conversationId } : {}) },
+      });
+      if (invokeError) throw new Error((await invokeErrorMessage(invokeError)) ?? "");
+      const reply = data as Partial<AiV2Response> | null;
+      if (
+        !reply ||
+        typeof reply.text !== "string" ||
+        typeof reply.conversation_id !== "string" ||
+        typeof reply.user_message_id !== "string" ||
+        typeof reply.message_id !== "string"
+      )
+        throw new Error("");
+      const { text: replyText, conversation_id: savedConversationId } = reply;
+      setMessages((current) => [
+        ...current.map((message) =>
+          message.id === pendingId ? { ...message, id: reply.user_message_id! } : message,
+        ),
+        { id: reply.message_id!, role: "assistant", text: replyText },
+      ]);
+      setSelectedId(savedConversationId);
+      setConversations((current) => {
+        const existing = current.find(({ id }) => id === savedConversationId);
+        const updated: Conversation = existing
+          ? { ...existing, title: wasEmpty ? titleFor(text) : existing.title }
+          : { id: savedConversationId, title: titleFor(text), created_at: new Date().toISOString() };
+        return [updated, ...current.filter(({ id }) => id !== savedConversationId)];
+      });
+    } catch (sendError) {
+      setMessages((current) => current.filter(({ id }) => id !== pendingId));
+      setDraft(text);
+      setFailedMessage(text);
+      const serverMessage = sendError instanceof Error ? sendError.message : "";
+      setError(serverMessage || "Unable to send your message. Please try again.");
+    } finally {
+      setIsSending(false);
+    }
+  };
+
   const sendMessage = async (messageToSend = draft) => {
     const text = messageToSend.trim();
     if (!text || !user || isSending || isLoading) return;
+    if (USE_AI_V2) return sendMessageV2(text);
     setDraft("");
     setError(null);
     setIsSending(true);
@@ -397,7 +471,7 @@ export function CareBridgeAiPanel() {
         .slice(-16)
         .map(({ role: historyRole, text: content }) => ({ role: historyRole, content }));
       setMessages((current) => [...current, userMessage]);
-      const { data, error: invokeError } = await supabase.functions.invoke("carebridge-ai", {
+      const { data, error: invokeError } = await supabase.functions.invoke(AI_FUNCTION, {
         body: { message: text, messages: history },
       });
       const responseText =
@@ -620,6 +694,18 @@ export function CareBridgeAiPanel() {
                   : "border-[#ffb6c1] bg-[#ffb6c1] text-[#c2185b]"
               )}>
                 {error}
+                {failedMessage && (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="ml-3 h-7"
+                    disabled={isSending}
+                    onClick={() => void sendMessage(failedMessage)}
+                  >
+                    Retry
+                  </Button>
+                )}
               </p>
             )}
             <div ref={bottomRef} />
