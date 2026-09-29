@@ -21,7 +21,6 @@ import { Button } from "@/components/ui/button";
 import { useClinic } from "@/lib/clinic/store";
 import { useAuth } from "@/lib/auth/store";
 import { useTheme } from "@/lib/theme/theme-context";
-import { ThemeToggle } from "@/components/theme-toggle";
 import type { Role } from "@/lib/clinic/types";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -177,7 +176,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate();
   const { logout, completeSignOut } = useAuth();
   const { theme } = useTheme();
-
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const isAiRoute = pathname === "/ai";
+  
   const handleSignOut = async () => {
     try {
       await logout();
@@ -197,13 +198,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <aside className={cn(
         "fixed inset-y-0 left-0 z-30 hidden w-72 flex-col border-r px-5 py-6 lg:flex",
         theme === "calm" 
-          ? "border-[rgba(23,42,37,0.08)] bg-[#f1eee6]" 
+          ? "border-[rgba(31, 75, 63, 0.08)] bg-[#f1eea6]" 
           : "border-[rgba(26,26,46,0.1)] bg-[#f5f0e8]"
       )}>
-        <div className="flex items-center justify-between">
-          <Wordmark />
-          <ThemeToggle />
-        </div>
+        <Wordmark />
         <div className="mt-8 flex-1 overflow-y-auto">
           <NavList />
         </div>
@@ -236,10 +234,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             theme === "calm" ? "bg-[#f1eee6]" : "bg-[#f5f0e8]"
           )}>
             <SheetTitle className="sr-only">Navigation</SheetTitle>
-            <div className="flex items-center justify-between">
-              <Wordmark />
-              <ThemeToggle />
-            </div>
+            <Wordmark />
             <div className="mt-6">
               <NavList onNavigate={() => setOpen(false)} />
             </div>
@@ -254,8 +249,18 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <Wordmark />
       </header>
 
-      <main className="lg:pl-72">
-        <div className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-8 sm:py-12">{children}</div>
+      <main
+        className={cn(
+          "lg:pl-72",
+          isAiRoute &&
+            "flex h-[calc(100dvh-3.5rem)] min-h-0 flex-col overflow-hidden lg:h-screen",
+        )}
+      >
+        {isAiRoute ? (
+          children
+        ) : (
+          <div className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-8 sm:py-12">{children}</div>
+        )}
       </main>
     </div>
   );

@@ -1,5 +1,5 @@
 import * as React from "react";
-import { ListPlus, LoaderCircle, MessageSquarePlus, Send, Sparkles, MoreHorizontal, Edit2, Trash2, Check, X } from "lucide-react";
+import { History, ListPlus, LoaderCircle, MessageSquarePlus, Send, Sparkles, MoreHorizontal, Edit2, Trash2, Check, X } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { Button } from "@/components/ui/button";
 import {
@@ -10,6 +10,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/lib/supabase/client";
@@ -195,7 +196,7 @@ function ProposalCard({
   return (
     <div
       className={cn(
-        "mt-3 rounded-[10px] border bg-white p-3",
+        "mt-3 border bg-white p-3",
         theme === "calm" ? "border-[rgba(23,42,37,0.15)]" : "border-[rgba(26,26,46,0.15)]",
       )}
     >
@@ -350,6 +351,7 @@ export function CareBridgeAiPanel() {
   const [error, setError] = React.useState<string | null>(null);
   const [failedMessage, setFailedMessage] = React.useState<string | null>(null);
   const [editingId, setEditingId] = React.useState<string | null>(null);
+  const [historyOpen, setHistoryOpen] = React.useState(false);
   const [editTitle, setEditTitle] = React.useState("");
   const [actionStatus, setActionStatus] = React.useState<Record<string, string>>({});
   const [resolvingId, setResolvingId] = React.useState<string | null>(null);
@@ -664,98 +666,145 @@ export function CareBridgeAiPanel() {
     }
   };
 
+  const conversationList = (onPicked?: () => void) => (
+    <>
+      <Button
+        size="sm"
+        variant={theme === "vibrant" ? "3d-primary" : undefined}
+        className={cn(
+          "mb-4 w-full justify-start",
+          theme === "calm" ? "bg-[#123f35] text-white hover:bg-[#0b2e27]" : ""
+        )}
+        onClick={() => {
+          void startConversation();
+          onPicked?.();
+        }}
+        disabled={isSending}
+      >
+        <MessageSquarePlus className="size-4" /> New chat
+      </Button>
+
+      <div className="min-h-0 flex-1 space-y-1 overflow-y-auto">
+        {conversations.length === 0 ? (
+          <div className={cn(
+            "rounded-[10px] border border-dashed p-4 text-center text-sm",
+            theme === "calm" 
+              ? "border-[rgba(23,42,37,0.15)] text-[#5f6b66]" 
+              : "border-[rgba(26,26,46,0.15)] text-[#666666]"
+          )}>
+            No conversations yet
+          </div>
+        ) : (
+          conversations.map((conversation) => (
+            <ConversationItem
+              key={conversation.id}
+              conversation={conversation}
+              isSelected={conversation.id === selectedId}
+              onSelect={() => {
+                void selectConversation(conversation.id);
+                onPicked?.();
+              }}
+              onRename={() => {
+                setEditingId(conversation.id);
+                setEditTitle(conversation.title || "");
+              }}
+              onDelete={() => void deleteConversation(conversation.id)}
+              isEditing={editingId === conversation.id}
+              editTitle={editTitle}
+              setEditTitle={setEditTitle}
+              onSaveEdit={() => void renameConversation(conversation.id, editTitle)}
+              onCancelEdit={() => {
+                setEditingId(null);
+                setEditTitle("");
+              }}
+            />
+          ))
+        )}
+      </div>
+    </>
+  );
+
   return (
     <section className={cn(
-      "flex min-h-[calc(100vh-4rem)] flex-col overflow-hidden rounded-xl border",
+      "flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-white",
       theme === "calm" 
-        ? "border-[rgba(23,42,37,0.08)] bg-white" 
-        : "border-[rgba(26,26,46,0.1)] bg-white"
+        ? "border-[rgba(23,42,37,0.08)]" 
+        : "border-[rgba(26,26,46,0.1)]"
     )}>
       <header className={cn(
-        "border-b px-5 py-5",
+        "flex items-center justify-between border-b px-4 py-3 sm:px-5 sm:py-5",
         theme === "calm" 
           ? "border-[rgba(23,42,37,0.08)]" 
           : "border-[rgba(26,26,46,0.1)]"
       )}>
-        <div className="flex items-center gap-2">
-          <span className={cn(
-            "grid size-8 place-items-center rounded-md text-white",
-            theme === "calm" ? "bg-[#123f35]" : "bg-[#2d5a3d]"
+        <div className="min-w-0">
+          <div className="flex items-center gap-2">
+            <span className={cn(
+              "grid size-8 shrink-0 place-items-center rounded-md text-white",
+              theme === "calm" ? "bg-[#123f35]" : "bg-[#2d5a3d]"
+            )}>
+              <Sparkles className="size-4" />
+            </span>
+            <h1 className="truncate font-display text-lg sm:text-xl">CareBridge AI</h1>
+          </div>
+          <p className={cn(
+            "mt-1 text-xs sm:text-sm",
+            theme === "calm" ? "text-[#5f6b66]" : "text-[#666666]"
           )}>
-            <Sparkles className="size-4" />
-          </span>
-          <h1 className="font-display text-xl">CareBridge AI</h1>
+            {ASSISTANT_LABEL[role]}
+          </p>
         </div>
-        <p className={cn(
-          "mt-1 text-sm",
-          theme === "calm" ? "text-[#5f6b66]" : "text-[#666666]"
-        )}>
-          {ASSISTANT_LABEL[role]}
-        </p>
+        <div className="flex shrink-0 items-center gap-2 md:hidden">
+          <Button
+            type="button"
+            size="icon"
+            variant={theme === "vibrant" ? "3d-primary" : undefined}
+            className={cn(
+              "size-9",
+              theme === "calm" ? "bg-[#123f35] text-white hover:bg-[#0b2e27]" : ""
+            )}
+            aria-label="Show chat history"
+            onClick={() => setHistoryOpen(true)}
+          >
+            <History />
+          </Button>
+          <Button
+            type="button"
+            size="icon"
+            variant={theme === "vibrant" ? "3d-primary" : undefined}
+            className={cn(
+              "size-9",
+              theme === "calm" ? "bg-[#123f35] text-white hover:bg-[#0b2e27]" : ""
+            )}
+            aria-label="Start new chat"
+            onClick={() => void startConversation()}
+            disabled={isSending}
+          >
+            <MessageSquarePlus />
+          </Button>
+        </div>
       </header>
+
+      <Sheet open={historyOpen} onOpenChange={setHistoryOpen}>
+        <SheetContent side="left" className="flex w-[280px] flex-col bg-[#f5f0e8] p-4">
+          <SheetTitle className="mb-4 font-display text-lg">Chats</SheetTitle>
+          {conversationList(() => setHistoryOpen(false))}
+        </SheetContent>
+      </Sheet>
       
       <div className="flex min-h-0 flex-1">
-        {/* Sidebar */}
         <aside className={cn(
-          "flex w-64 shrink-0 flex-col border-r p-4",
+          "hidden w-64 shrink-0 flex-col border-r p-4 md:flex",
           theme === "calm" 
             ? "border-[rgba(23,42,37,0.08)] bg-[#f1eee6]" 
             : "border-[rgba(26,26,46,0.1)] bg-[#f5f0e8]"
         )}>
-          <Button
-            size="sm"
-            variant={theme === "vibrant" ? "3d-primary" : undefined}
-            className={cn(
-              "mb-4 w-full justify-start",
-              theme === "calm" 
-                ? "bg-[#123f35] text-white hover:bg-[#0b2e27]" 
-                : ""
-            )}
-            onClick={() => void startConversation()}
-            disabled={isSending}
-          >
-            <MessageSquarePlus className="size-4" /> New chat
-          </Button>
-          
-          <div className="min-h-0 flex-1 space-y-1 overflow-y-auto">
-            {conversations.length === 0 ? (
-              <div className={cn(
-                "rounded-[10px] border border-dashed p-4 text-center text-sm",
-                theme === "calm" 
-                  ? "border-[rgba(23,42,37,0.15)] text-[#5f6b66]" 
-                  : "border-[rgba(26,26,46,0.15)] text-[#666666]"
-              )}>
-                No conversations yet
-              </div>
-            ) : (
-              conversations.map((conversation) => (
-                <ConversationItem
-                  key={conversation.id}
-                  conversation={conversation}
-                  isSelected={conversation.id === selectedId}
-                  onSelect={() => void selectConversation(conversation.id)}
-                  onRename={() => {
-                    setEditingId(conversation.id);
-                    setEditTitle(conversation.title || "");
-                  }}
-                  onDelete={() => void deleteConversation(conversation.id)}
-                  isEditing={editingId === conversation.id}
-                  editTitle={editTitle}
-                  setEditTitle={setEditTitle}
-                  onSaveEdit={() => void renameConversation(conversation.id, editTitle)}
-                  onCancelEdit={() => {
-                    setEditingId(null);
-                    setEditTitle("");
-                  }}
-                />
-              ))
-            )}
-          </div>
+          {conversationList()}
         </aside>
         
         {/* Main Chat Area */}
         <div className="flex min-w-0 flex-1 flex-col">
-          <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-4 py-5">
+          <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-3 py-4 sm:px-4 sm:py-5">
             {isLoading ? (
               <div className="m-auto flex items-center gap-2 text-sm text-muted-foreground">
                 <LoaderCircle className="size-4 animate-spin" /> Loading conversation…
@@ -876,7 +925,7 @@ export function CareBridgeAiPanel() {
           {/* Composer */}
           <form
             className={cn(
-              "border-t p-4",
+              "border-t p-2.5 sm:p-4",
               theme === "calm" 
                 ? "border-[rgba(23,42,37,0.08)] bg-[#f1eee6]" 
                 : "border-[rgba(26,26,46,0.1)] bg-[#f5f0e8]"
@@ -886,7 +935,7 @@ export function CareBridgeAiPanel() {
               void sendMessage();
             }}
           >
-            <div className="flex items-end gap-2">
+            <div className="flex min-w-0 items-end gap-2">
               {role === "patient" && (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
@@ -928,7 +977,7 @@ export function CareBridgeAiPanel() {
                 placeholder="Ask CareBridge AI…"
                 aria-label="Message CareBridge AI"
                 className={cn(
-                  "min-h-11 max-h-32 resize-y",
+                  "min-h-11 min-w-0 flex-1 max-h-32 resize-y",
                   theme === "calm" 
                     ? "border-[rgba(23,42,37,0.15)] bg-white text-[#172a25] placeholder:text-[#5f6b66] focus:border-[#123f35] focus:ring-1 focus:ring-[#123f35]" 
                     : "border-[rgba(26,26,46,0.15)] bg-white text-[#1a1a2e] placeholder:text-[#666666] focus:border-[#2d5a3d] focus:ring-1 focus:ring-[#2d5a3d]"

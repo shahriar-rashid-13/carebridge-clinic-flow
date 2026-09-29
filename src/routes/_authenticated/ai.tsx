@@ -12,5 +12,9 @@ export const Route = createFileRoute("/_authenticated/ai")({
 });
 
 function CareBridgeAiPage() {
-  return <CareBridgeAiPanel />;
+  return (
+    <div className="flex min-h-0 flex-1 flex-col">
+      <CareBridgeAiPanel />
+    </div>
+  );
 }
