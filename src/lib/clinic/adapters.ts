@@ -8,6 +8,7 @@ import type {
   Patient,
   Prescription,
 } from "./types";
+import { WEEKDAYS } from "./types";
 
 type Row = {
   [key: string]: unknown;
@@ -81,6 +82,21 @@ const stringArray = (value: unknown) => {
   return [];
 };
 
+// Stored rows mix "Monday"/"Mon" and "09:00AM"/"09:00 AM"; the app uses "Mon" and "09:00 AM".
+export const normalizeDays = (days: string[]) => {
+  const short = new Set(days.map((day) => day.trim().slice(0, 3).toLowerCase()));
+  return WEEKDAYS.filter((day) => short.has(day.toLowerCase()));
+};
+
+const SLOT_PATTERN = /^(0?[1-9]|1[0-2]):([0-5]\d)\s*(AM|PM)$/i;
+
+export const normalizeSlot = (slot: string) => {
+  const match = slot.trim().match(SLOT_PATTERN);
+  return match ? `${match[1]!.padStart(2, "0")}:${match[2]} ${match[3]!.toUpperCase()}` : slot.trim();
+};
+
+export const normalizeSlots = (slots: string[]) => [...new Set(slots.map(normalizeSlot).filter(Boolean))];
+
 const jsonArray = (value: unknown): unknown[] => {
   if (Array.isArray(value)) return value;
   if (typeof value !== "string") return [];
@@ -141,8 +157,8 @@ export const mapDoctor = (row: Row, profile?: Row): Doctor => ({
   name: stringValue(profile?.full_name ?? row.name, "Unnamed doctor"),
   specialty: stringValue(row.specialization),
   fee: Number(row.consultation_fee ?? 0),
-  days: stringArray(row.available_days),
-  slots: stringArray(row.slots),
+  days: normalizeDays(stringArray(row.available_days)),
+  slots: normalizeSlots(stringArray(row.slots)),
   active: stringValue(row.status).toLowerCase() === "active" || row.status === true,
   bio: stringValue(row.bio),
   room: stringValue(row.room),
@@ -153,7 +169,7 @@ export const mapAppointment = (row: Row): Appointment => ({
   patientId: stringValue(row.patient_id),
   doctorId: stringValue(row.doctor_id),
   date: stringValue(row.appointment_date),
-  slot: stringValue(row.time_slot),
+  slot: normalizeSlot(stringValue(row.time_slot)),
   reason: stringValue(row.reason),
   notes: stringValue(row.notes),
   status: normalizeStatus(row.status),

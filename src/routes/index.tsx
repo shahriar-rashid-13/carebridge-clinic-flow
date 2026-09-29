@@ -18,7 +18,7 @@ export const Route = createFileRoute("/")({
 });
 
 function LandingPage() {
-  const theme = "vibrant";
+  const theme = "vibrant" as "calm" | "vibrant";
 
   return (
     <div className="min-h-screen bg-[#faf6f0] text-[#1a1a2e]">

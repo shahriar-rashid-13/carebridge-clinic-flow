@@ -8,6 +8,8 @@ import {
   mapInvoice,
   mapPrescription,
   mapProfileToPatient,
+  normalizeDays,
+  normalizeSlots,
 } from "./adapters";
 import type {
   Appointment,
@@ -549,8 +551,8 @@ export function ClinicProvider({ children }: { children: React.ReactNode }) {
       const payload = {
         specialization: doctor.specialty,
         consultation_fee: doctor.fee,
-        available_days: doctor.days,
-        slots: doctor.slots,
+        available_days: normalizeDays(doctor.days),
+        slots: normalizeSlots(doctor.slots),
         status: doctor.active ? "active" : "inactive",
         bio: doctor.bio,
         room: doctor.room,
@@ -601,8 +603,8 @@ export function ClinicProvider({ children }: { children: React.ReactNode }) {
         p_target_profile_id: input.profileId,
         p_specialization: input.specialization.trim(),
         p_consultation_fee: input.consultationFee,
-        p_available_days: input.availableDays,
-        p_slots: input.slots,
+        p_available_days: normalizeDays(input.availableDays),
+        p_slots: normalizeSlots(input.slots),
         p_active: input.active,
         p_bio: input.bio.trim(),
         p_room: input.room.trim(),
