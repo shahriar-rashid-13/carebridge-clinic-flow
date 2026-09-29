@@ -19,6 +19,8 @@ const DEFAULT_RATE_LIMIT_PER_DAY = 1000;
 const DEFAULT_CLINIC_TIMEZONE = "Asia/Dhaka";
 const LEGACY_PROPOSAL_MARKER =
   /<carebridge-booking-proposal>[\s\S]*?<\/carebridge-booking-proposal>/g;
+// Some fallback models print a tool call as text instead of calling the tool.
+const TEXT_TOOL_CALL = /<tool_call>|<function=|<\/?parameter/i;
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -55,6 +57,7 @@ function systemPrompt(role: Role, today: string, timeZone: string): string {
     ROLE_GUIDANCE[role],
     "Changes work through propose_* tools. A propose tool only creates a proposal card; nothing changes until the user presses Confirm on that card.",
     "After proposing, tell the user to review the card and press Confirm. Never say an action is done. Never ask the user to type yes; typed confirmations do nothing.",
+    "Only say a proposal was created if a propose tool returned ok:true in this reply. Earlier messages do not create cards; if the user asks about a missing card, call the propose tool again.",
     "Only propose once you have every required detail. Ask a short question if something is missing or ambiguous.",
     "Refer to people by name and to appointments by date and time. Do not show internal IDs unless the user asks.",
     "If a tool returns ok:false, explain the problem briefly and suggest the next step.",
@@ -67,7 +70,7 @@ function systemPrompt(role: Role, today: string, timeZone: string): string {
 function trimHistory(rows: ChatMessage[]): ChatMessage[] {
   const cleaned = rows
     .map((row) => ({ role: row.role, content: row.content.replace(LEGACY_PROPOSAL_MARKER, "").trim() }))
-    .filter((row) => row.content.length > 0);
+    .filter((row) => row.content.length > 0 && !(row.role === "assistant" && TEXT_TOOL_CALL.test(row.content)));
 
   const kept: ChatMessage[] = [];
   let total = 0;
@@ -343,6 +346,12 @@ Deno.serve(async (req) => {
     }
   }
 
+  if (finalText && TEXT_TOOL_CALL.test(finalText)) {
+    console.error(JSON.stringify({ request_id: requestId, detail: "model printed a tool call as text" }));
+    finalText = ctx.proposals.length > 0
+      ? null
+      : "Sorry, I could not prepare that request. Please send your last message again.";
+  }
   if (!finalText && ctx.proposals.length > 0) {
     finalText = "Please review the proposal below and press Confirm if it is correct.";
   }

@@ -74,10 +74,11 @@ export async function executeToolCall(
 
   try {
     const result = await tool.run(args, ctx);
-    return finish(result, result["ok"] !== false);
+    const failed = result["ok"] === false;
+    return finish(result, !failed, failed && typeof result["message"] === "string" ? result["message"] : undefined);
   } catch (err) {
     if (err instanceof ToolInputError) {
-      return finish({ ok: false, message: err.message }, false, "invalid_input");
+      return finish({ ok: false, message: err.message }, false, `invalid_input: ${err.message}`);
     }
     console.error(
       JSON.stringify({
