@@ -36,7 +36,13 @@ type ActionDefinition = {
 
 const ACTIVE_STATUSES = ["requested", "confirmed"];
 const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-const SLOT_PATTERN = /^(0[1-9]|1[0-2]):[0-5]\d (AM|PM)$/;
+// Stored slots mix "09:00 AM" and "09:00AM", so slots are compared normalized.
+const SLOT_PATTERN = /^(0?[1-9]|1[0-2]):([0-5]\d)\s?(AM|PM)$/i;
+
+function normalizeSlot(value: string): string {
+  const match = value.trim().match(SLOT_PATTERN);
+  return match ? `${match[1]!.padStart(2, "0")}:${match[2]} ${match[3]!.toUpperCase()}` : value.trim().toUpperCase();
+}
 
 type DbError = { code?: string; message: string };
 
@@ -49,7 +55,7 @@ function raise(error: DbError, conflictMessage = "That conflicts with an existin
 function slotArg(args: Record<string, unknown>, key: string): string {
   const value = textArg(args, key, 20);
   if (!SLOT_PATTERN.test(value)) throw new ToolInputError(`${key} must look like "09:00 AM".`);
-  return value;
+  return normalizeSlot(value);
 }
 
 function numberArg(args: Record<string, unknown>, key: string, max: number): number {
@@ -94,16 +100,17 @@ async function appointmentNames(ctx: ToolContext, row: AppointmentRow) {
 
 const when = (date: string, slot: string) => `${weekdayOf(date)} ${date} at ${slot}`;
 
-// Returns the doctor's name when the slot is bookable, otherwise throws.
+// Returns the doctor's name and the slot exactly as the doctor stores it when
+// the slot is bookable, otherwise throws.
 async function checkSlot(
   ctx: ToolContext,
   doctorId: string,
   date: string,
   slot: string,
   current?: { date: string; slot: string },
-): Promise<string> {
+): Promise<{ doctorName: string; slot: string }> {
   if (date < ctx.today) throw new ActionError("That date is in the past.");
-  if (current && current.date === date && current.slot === slot) {
+  if (current && current.date === date && normalizeSlot(current.slot) === slot) {
     throw new ActionError("The appointment is already at that date and time.");
   }
   const { data: doctor, error } = await ctx.db
@@ -114,18 +121,22 @@ async function checkSlot(
   if (error) throw new Error(`doctor lookup failed: ${error.message}`);
   if (!doctor || doctor.status !== "active") throw new ActionError("That doctor is not available for booking.");
   const days: string[] = Array.isArray(doctor.available_days) ? doctor.available_days : [];
-  if (!days.includes(weekdayOf(date))) {
-    throw new ActionError(`The doctor does not work on ${weekdayOf(date)}. Working days: ${days.join(", ")}.`);
+  const weekday = weekdayOf(date);
+  if (!days.some((day) => day.slice(0, 3) === weekday)) {
+    throw new ActionError(`The doctor does not work on ${weekday}. Working days: ${days.join(", ")}.`);
   }
   const slots: string[] = Array.isArray(doctor.slots) ? doctor.slots : [];
-  if (!slots.includes(slot)) throw new ActionError(`${slot} is not one of the doctor's slot times.`);
+  const storedSlot = slots.find((candidate) => normalizeSlot(candidate) === slot);
+  if (!storedSlot) throw new ActionError(`${slot} is not one of the doctor's slot times.`);
   const { data: taken, error: takenError } = await ctx.db.rpc("get_taken_slots", {
     p_doctor_id: doctorId,
     p_date: date,
   });
   if (takenError) throw new Error(`get_taken_slots failed: ${takenError.message}`);
-  if (((taken ?? []) as string[]).includes(slot)) throw new ActionError("That slot is already booked.");
-  return (doctor as any).profile?.full_name ?? "the doctor";
+  if (((taken ?? []) as string[]).some((candidate) => normalizeSlot(candidate) === slot)) {
+    throw new ActionError("That slot is already booked.");
+  }
+  return { doctorName: (doctor as any).profile?.full_name ?? "the doctor", slot: storedSlot };
 }
 
 async function requireActive(ctx: ToolContext, id: string) {
@@ -163,9 +174,8 @@ const bookAppointment: ActionDefinition = {
   async prepare(args, ctx) {
     const doctorId = uuidArg(args, "doctor_id");
     const date = dateArg(args, "appointment_date");
-    const slot = slotArg(args, "time_slot");
     const reason = textArg(args, "reason", 300);
-    const doctorName = await checkSlot(ctx, doctorId, date, slot);
+    const { doctorName, slot } = await checkSlot(ctx, doctorId, date, slotArg(args, "time_slot"));
     return {
       payload: { doctor_id: doctorId, appointment_date: date, time_slot: slot, reason },
       summary: `Book ${doctorName} on ${when(date, slot)}`,
@@ -240,8 +250,7 @@ const rescheduleMyAppointment: ActionDefinition = {
     const row = await requireActive(ctx, uuidArg(args, "appointment_id"));
     if (row.patient_id !== ctx.userId) throw new ActionError("Appointment not found.");
     const date = dateArg(args, "new_date");
-    const slot = slotArg(args, "new_time_slot");
-    const doctorName = await checkSlot(ctx, row.doctor_id, date, slot, {
+    const { doctorName, slot } = await checkSlot(ctx, row.doctor_id, date, slotArg(args, "new_time_slot"), {
       date: row.appointment_date,
       slot: row.time_slot,
     });
@@ -400,8 +409,10 @@ const rescheduleAppointment: ActionDefinition = {
   async prepare(args, ctx) {
     const row = await requireActive(ctx, uuidArg(args, "appointment_id"));
     const date = dateArg(args, "new_date");
-    const slot = slotArg(args, "new_time_slot");
-    const doctorName = await checkSlot(ctx, row.doctor_id, date, slot, { date: row.appointment_date, slot: row.time_slot });
+    const { doctorName, slot } = await checkSlot(ctx, row.doctor_id, date, slotArg(args, "new_time_slot"), {
+      date: row.appointment_date,
+      slot: row.time_slot,
+    });
     const { patientName } = await appointmentNames(ctx, row);
     return {
       payload: { appointment_id: row.id, new_date: date, new_time_slot: slot },
@@ -621,8 +632,9 @@ const promoteToDoctor: ActionDefinition = {
     const fee = numberArg(args, "consultation_fee", 1_000_000);
     const days = [...new Set(arrayArg(args, "available_days", 7).map(String))];
     if (days.some((day) => !WEEKDAYS.includes(day))) throw new ToolInputError(`available_days must use ${WEEKDAYS.join(", ")}.`);
-    const slots = [...new Set(arrayArg(args, "slots", 40).map(String))];
-    if (slots.some((slot) => !SLOT_PATTERN.test(slot))) throw new ToolInputError('slots must look like "09:00 AM".');
+    const rawSlots = arrayArg(args, "slots", 40).map(String);
+    if (rawSlots.some((slot) => !SLOT_PATTERN.test(slot.trim()))) throw new ToolInputError('slots must look like "09:00 AM".');
+    const slots = [...new Set(rawSlots.map(normalizeSlot))];
     const room = textArg(args, "room", 50, true);
     const bio = textArg(args, "bio", 500, true);
     const name = profile.full_name ?? profile.email ?? "this patient";
