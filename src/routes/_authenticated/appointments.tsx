@@ -31,6 +31,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { EmptyState, PageHeader, Panel } from "@/components/clinic/page";
+import { PatientWaitlistPanel, ReceptionAutomationsPanel } from "@/components/clinic/automation-panels";
 import { StatusBadge } from "@/components/clinic/status-badge";
 import { useClinic } from "@/lib/clinic/store";
 import { prettyDate, weekdayOf } from "@/lib/clinic/data";
@@ -120,6 +121,9 @@ function AppointmentsPage() {
           ) : undefined
         }
       />
+
+      {role === "patient" && <PatientWaitlistPanel />}
+      {role === "receptionist" && <ReceptionAutomationsPanel />}
 
       <div className="flex flex-wrap items-center gap-3">
         <div className="flex flex-wrap gap-2">

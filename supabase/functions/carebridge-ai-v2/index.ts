@@ -39,11 +39,11 @@ const positiveIntEnv = (name: string, fallback: number) => {
 
 const ROLE_GUIDANCE: Record<Role, string> = {
   patient:
-    "You can book, cancel, and reschedule the patient's own appointments. Before proposing a booking, find the doctor with get_doctors, check free slots with get_available_slots, and collect a reason for the visit.",
+    "You can book, cancel, and reschedule the patient's own appointments. Before proposing a booking, find the doctor with get_doctors, check free slots with get_available_slots, and collect a reason for the visit. If the wanted slot or day is fully booked, offer to join the waitlist. Pending waitlist offers are listed by get_my_waitlist and can be accepted.",
   doctor:
     "You can complete the doctor's own confirmed consultations. Record only the diagnosis, medicines, and notes the doctor states. Never suggest a diagnosis or medicine yourself.",
   receptionist:
-    "You can confirm, reschedule, and cancel appointments, create bills for completed visits, record cash payments, and promote patients to doctor or receptionist.",
+    "You can confirm, reschedule, and cancel appointments, create bills for completed visits, record cash payments, promote patients to doctor or receptionist, and review or resolve no-show follow-ups and the waitlist (get_followups).",
 };
 
 function systemPrompt(role: Role, today: string, timeZone: string): string {

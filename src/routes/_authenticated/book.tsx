@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { PageHeader, Panel } from "@/components/clinic/page";
 import { useClinic } from "@/lib/clinic/store";
+import { joinWaitlist } from "@/lib/clinic/automations";
 import { money, prettyDate, shiftDays, weekdayOf } from "@/lib/clinic/data";
 import { cn } from "@/lib/utils";
 
@@ -38,9 +39,28 @@ function BookPage() {
   const [slot, setSlot] = React.useState("");
   const [reason, setReason] = React.useState("");
   const [notes, setNotes] = React.useState("");
+  const [waitSlot, setWaitSlot] = React.useState<string | null>(null);
+  const [joining, setJoining] = React.useState(false);
 
   const doctor = doctors.find((d) => d.id === doctorId);
   const dayOk = doctor ? doctor.days.includes(weekdayOf(date)) : false;
+  const allTaken = !!doctor && dayOk && doctor.slots.every((s) => isSlotTaken(doctorId, date, s));
+
+  const join = async (preferredSlot: string | null) => {
+    if (!doctor) return;
+    setJoining(true);
+    try {
+      await joinWaitlist(doctorId, date, preferredSlot, reason.trim());
+      toast.success("You're on the waitlist", {
+        description: `${doctor.name} · ${prettyDate(date)} · ${preferredSlot ?? "any slot"}. We'll offer it to you if it opens up.`,
+      });
+      navigate({ to: "/appointments" });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not join the waitlist.");
+    } finally {
+      setJoining(false);
+    }
+  };
 
   if (role !== "patient") {
     return (
@@ -87,6 +107,7 @@ function BookPage() {
               onClick={() => {
                 setDoctorId(d.id);
                 setSlot("");
+                setWaitSlot(null);
               }}
               className={cn(
                 "rounded-lg border p-4 text-left transition-colors",
@@ -124,6 +145,7 @@ function BookPage() {
               onChange={(e) => {
                 setDate(e.target.value);
                 setSlot("");
+                setWaitSlot(null);
               }}
               className="mt-2"
             />
@@ -145,12 +167,20 @@ function BookPage() {
                     <button
                       key={s}
                       type="button"
-                      disabled={taken}
-                      onClick={() => setSlot(s)}
+                      title={taken ? "Taken. Click to join the waitlist." : undefined}
+                      onClick={() => {
+                        if (taken) {
+                          setSlot("");
+                          setWaitSlot(s);
+                        } else {
+                          setSlot(s);
+                          setWaitSlot(null);
+                        }
+                      }}
                       className={cn(
                         "rounded-full border px-3.5 py-1.5 text-xs transition-colors",
-                        taken &&
-                          "cursor-not-allowed border-border bg-muted text-muted-foreground/60 line-through",
+                        taken && waitSlot !== s && "border-border bg-muted text-muted-foreground/60 line-through",
+                        taken && waitSlot === s && "border-[#c2185b] bg-muted text-[#c2185b] line-through",
                         !taken && slot === s && "border-primary bg-primary text-primary-foreground",
                         !taken && slot !== s && "border-border bg-card hover:bg-linen",
                       )}
@@ -159,6 +189,31 @@ function BookPage() {
                     </button>
                   );
                 })}
+              </div>
+            )}
+            {dayOk && (waitSlot || allTaken) && (
+              <div className="mt-3 flex flex-wrap items-center gap-3 rounded-md border border-dashed border-border bg-linen/60 px-4 py-3">
+                <p className="min-w-0 flex-1 text-xs text-muted-foreground">
+                  {waitSlot
+                    ? `${waitSlot} is taken. Join the waitlist and it is offered to you automatically if it is cancelled.`
+                    : "Every slot on this day is taken. Join the waitlist for the first one that opens up."}
+                </p>
+                <div className="flex gap-2">
+                  {waitSlot && (
+                    <Button type="button" size="sm" disabled={joining} onClick={() => void join(waitSlot)}>
+                      Wait for {waitSlot}
+                    </Button>
+                  )}
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={waitSlot ? "outline" : "default"}
+                    disabled={joining}
+                    onClick={() => void join(null)}
+                  >
+                    Any slot that day
+                  </Button>
+                </div>
               </div>
             )}
           </div>

@@ -55,6 +55,7 @@ const PATIENT_ACTIONS = [
   ["Book an appointment", "Help me book an appointment."],
   ["Cancel an appointment", "Help me cancel an appointment."],
   ["Reschedule an appointment", "Help me reschedule an appointment."],
+  ["My waitlist", "Show my waitlist and any slot offers."],
 ] as const;
 
 const AI_FUNCTION = import.meta.env["VITE_AI_FUNCTION"] || "carebridge-ai";

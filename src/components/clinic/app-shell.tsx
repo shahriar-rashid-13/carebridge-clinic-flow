@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
+import { NotificationBell, NotificationsProvider } from "@/components/clinic/notification-bell";
 import { useClinic } from "@/lib/clinic/store";
 import { useAuth } from "@/lib/auth/store";
 import { useTheme } from "@/lib/theme/theme-context";
@@ -191,6 +192,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   };
 
   return (
+    <NotificationsProvider>
     <div className={cn(
       "min-h-screen",
       theme === "calm" ? "bg-[#f7f2e9]" : "bg-[#faf6f0]"
@@ -201,7 +203,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           ? "border-[rgba(31, 75, 63, 0.08)] bg-[#f1eea6]" 
           : "border-[rgba(26,26,46,0.1)] bg-[#f5f0e8]"
       )}>
-        <Wordmark />
+        <div className="flex items-center justify-between gap-2">
+          <Wordmark />
+          <NotificationBell />
+        </div>
         <div className="mt-8 flex-1 overflow-y-auto">
           <NavList />
         </div>
@@ -247,6 +252,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </SheetContent>
         </Sheet>
         <Wordmark />
+        <div className="ml-auto">
+          <NotificationBell />
+        </div>
       </header>
 
       <main
@@ -263,5 +271,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         )}
       </main>
     </div>
+    </NotificationsProvider>
   );
 }

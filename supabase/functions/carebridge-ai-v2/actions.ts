@@ -667,7 +667,164 @@ const promoteToDoctor: ActionDefinition = {
   },
 };
 
+// ---------------------------------------------------------------- automations
+
+const joinWaitlist: ActionDefinition = {
+  type: "join_waitlist",
+  toolName: "propose_join_waitlist",
+  description:
+    "Propose adding the signed-in patient to the waitlist for a doctor on a date, optionally for one taken slot. When a matching slot is cancelled it is offered to them automatically. Use only when the wanted slot or day is fully booked.",
+  parameters: {
+    type: "object",
+    properties: {
+      doctor_id: { type: "string" },
+      date: { type: "string", description: "YYYY-MM-DD" },
+      time_slot: { type: "string", description: 'Optional taken slot to wait for, for example "02:30 PM". Omit for any slot that day.' },
+      reason: { type: "string", description: "Reason for the visit in the patient's words." },
+    },
+    required: ["doctor_id", "date"],
+  },
+  roles: ["patient"],
+  async prepare(args, ctx) {
+    const doctorId = uuidArg(args, "doctor_id");
+    const date = dateArg(args, "date");
+    if (date < ctx.today) throw new ActionError("That date is in the past.");
+    const wanted = args["time_slot"] ? slotArg(args, "time_slot") : null;
+    const reason = textArg(args, "reason", 300, true);
+    const { data: doctor, error } = await ctx.db
+      .from("doctors")
+      .select("id, available_days, slots, status, profile:profiles!doctors_user_id_fkey(full_name)")
+      .eq("id", doctorId)
+      .maybeSingle();
+    if (error) throw new Error(`doctor lookup failed: ${error.message}`);
+    if (!doctor || doctor.status !== "active") throw new ActionError("That doctor is not available.");
+    const weekday = weekdayOf(date);
+    if (!(doctor.available_days ?? []).some((day: string) => day.slice(0, 3) === weekday)) {
+      throw new ActionError(`The doctor does not work on ${weekday}.`);
+    }
+    let slot: string | null = null;
+    if (wanted) {
+      slot = (doctor.slots ?? []).find((candidate: string) => normalizeSlot(candidate) === wanted) ?? null;
+      if (!slot) throw new ActionError(`${wanted} is not one of the doctor's slot times.`);
+    }
+    const doctorName = (doctor as any).profile?.full_name ?? "the doctor";
+    return {
+      payload: { doctor_id: doctorId, date, time_slot: slot, reason },
+      summary: `Join the waitlist for ${doctorName} on ${weekday} ${date}${slot ? ` at ${slot}` : ""}`,
+      details: [
+        { label: "Doctor", value: doctorName },
+        { label: "Date", value: `${weekday} ${date}` },
+        { label: "Slot", value: slot ?? "Any slot that day" },
+        ...(reason ? [{ label: "Reason", value: reason }] : []),
+      ],
+    };
+  },
+  async commit(payload, ctx) {
+    const { error } = await ctx.db.rpc("join_waitlist", {
+      p_doctor_id: payload["doctor_id"],
+      p_date: payload["date"],
+      p_slot: payload["time_slot"] ?? null,
+      p_reason: payload["reason"] ?? "",
+    });
+    if (error) raise(error);
+    return {
+      ok: true,
+      message: "You are on the waitlist. If a matching slot is cancelled, you will get an offer in your notifications.",
+    };
+  },
+};
+
+const acceptWaitlistOffer: ActionDefinition = {
+  type: "accept_waitlist_offer",
+  toolName: "propose_accept_waitlist_offer",
+  description: "Propose accepting one of the signed-in patient's pending waitlist offers. Find the offer_id with get_my_waitlist.",
+  parameters: {
+    type: "object",
+    properties: { offer_id: { type: "string", description: "Offer ID from get_my_waitlist." } },
+    required: ["offer_id"],
+  },
+  roles: ["patient"],
+  async prepare(args, ctx) {
+    const { data: offer, error } = await ctx.db
+      .from("waitlist_offers")
+      .select("id, doctor_id, offer_date, time_slot, status, expires_at")
+      .eq("id", uuidArg(args, "offer_id"))
+      .maybeSingle();
+    if (error) throw new Error(`offer lookup failed: ${error.message}`);
+    if (!offer) throw new ActionError("Offer not found.");
+    if (offer.status !== "pending") throw new ActionError(`This offer is already ${offer.status}.`);
+    if (new Date(offer.expires_at).getTime() <= Date.now()) throw new ActionError("This offer has expired.");
+    const doctorName = (await doctorsById(ctx.db, [offer.doctor_id])).get(offer.doctor_id)?.name ?? "the doctor";
+    return {
+      payload: { offer_id: offer.id },
+      summary: `Accept the ${doctorName} slot on ${when(offer.offer_date, offer.time_slot)}`,
+      details: [
+        { label: "Doctor", value: doctorName },
+        { label: "When", value: when(offer.offer_date, offer.time_slot) },
+        {
+          label: "Offer expires in",
+          value: `${Math.max(1, Math.ceil((new Date(offer.expires_at).getTime() - Date.now()) / 60_000))} min`,
+        },
+        { label: "New status", value: "requested (front desk confirms)" },
+      ],
+    };
+  },
+  async commit(payload, ctx) {
+    const { error } = await ctx.db.rpc("accept_waitlist_offer", { p_offer_id: payload["offer_id"] });
+    if (error) raise(error, "Sorry, that slot was just taken.");
+    return { ok: true, message: "The slot is booked. The front desk will confirm it." };
+  },
+};
+
+const resolveFollowup: ActionDefinition = {
+  type: "resolve_followup",
+  toolName: "propose_resolve_followup",
+  description: "Propose resolving an open no-show follow-up with a short note. Find the followup_id with get_followups.",
+  parameters: {
+    type: "object",
+    properties: {
+      followup_id: { type: "string", description: "Follow-up ID from get_followups." },
+      note: { type: "string", description: "What was done, for example 'Called patient, rebooked for Friday'." },
+    },
+    required: ["followup_id"],
+  },
+  roles: ["receptionist"],
+  async prepare(args, ctx) {
+    const { data: followup, error } = await ctx.db
+      .from("appointment_followups")
+      .select("id, appointment_id, status")
+      .eq("id", uuidArg(args, "followup_id"))
+      .maybeSingle();
+    if (error) throw new Error(`follow-up lookup failed: ${error.message}`);
+    if (!followup) throw new ActionError("Follow-up not found.");
+    if (followup.status !== "open") throw new ActionError("This follow-up is already resolved.");
+    const note = textArg(args, "note", 500, true);
+    const row = await loadAppointment(ctx, followup.appointment_id);
+    const { doctorName, patientName } = await appointmentNames(ctx, row);
+    return {
+      payload: { followup_id: followup.id, note },
+      summary: `Resolve the no-show follow-up for ${patientName} (${when(row.appointment_date, row.time_slot)})`,
+      details: [
+        { label: "Patient", value: patientName },
+        { label: "Missed visit", value: `${doctorName}, ${when(row.appointment_date, row.time_slot)}` },
+        { label: "Note", value: note || "-" },
+      ],
+    };
+  },
+  async commit(payload, ctx) {
+    const { error } = await ctx.db.rpc("resolve_followup", {
+      p_followup_id: payload["followup_id"],
+      p_note: payload["note"] ?? "",
+    });
+    if (error) raise(error);
+    return { ok: true, message: "The follow-up is resolved." };
+  },
+};
+
 const ACTIONS: ActionDefinition[] = [
+  joinWaitlist,
+  acceptWaitlistOffer,
+  resolveFollowup,
   bookAppointment,
   cancelMyAppointment,
   rescheduleMyAppointment,
