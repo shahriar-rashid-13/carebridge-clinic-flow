@@ -98,7 +98,7 @@ async function countAssistantMessagesSince(
   return error ? null : (count ?? 0);
 }
 
-Deno.serve(async (req) => {
+export async function handler(req: Request): Promise<Response> {
   if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: cors });
 
   const requestId = crypto.randomUUID();
@@ -386,4 +386,6 @@ Deno.serve(async (req) => {
     message_id: saved.assistant_message_id,
     proposals: ctx.proposals,
   });
-});
+}
+
+Deno.serve(handler);

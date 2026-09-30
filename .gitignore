@@ -35,3 +35,10 @@ dist-ssr
 .env.local
 .env
 .env.*
+!.env.test.example
+
+# Test output
+coverage
+test-results
+playwright-report
+playwright/.cache
