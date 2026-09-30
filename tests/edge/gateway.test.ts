@@ -94,6 +94,26 @@ describe("callGateway", () => {
     await expect(call()).resolves.toMatchObject({ ok: true, servedByFallback: true });
   });
 
+  it("treats the Gemini retry group as the primary model", async () => {
+    fetchMock.mockResolvedValue(
+      completion({ content: "x" }, "gemini-3.1-flash-lite", {
+        "x-litellm-attempted-fallbacks": "1",
+        "x-litellm-model-group": "carebridge-agent-retry",
+      }),
+    );
+    await expect(call()).resolves.toMatchObject({ ok: true, servedByFallback: false });
+  });
+
+  it("detects the fallback model group from the LiteLLM header", async () => {
+    fetchMock.mockResolvedValue(
+      completion({ content: "x" }, "nvidia/nemotron", {
+        "x-litellm-attempted-fallbacks": "2",
+        "x-litellm-model-group": "carebridge-agent-fallback",
+      }),
+    );
+    await expect(call()).resolves.toMatchObject({ ok: true, servedByFallback: true });
+  });
+
   it("detects a fallback from a non-Gemini model name", async () => {
     fetchMock.mockResolvedValue(
       completion({ content: "x" }, "openrouter/nvidia/nemotron-3-ultra-550b-a55b:free"),

@@ -79,10 +79,14 @@ export async function callGateway(options: {
     return { ok: false, status: 502, error: "AI service returned an invalid reply.", detail: "missing message" };
   }
   const model = typeof data?.model === "string" ? data.model : null;
+  // The gateway retries Gemini in its own model group before the non-Gemini fallback, so a
+  // retried request can still be a Gemini answer. Prefer the served model group when present.
+  const modelGroup = response.headers.get("x-litellm-model-group");
   const attemptedFallbacks = Number(response.headers.get("x-litellm-attempted-fallbacks")) || 0;
-  const servedByFallback =
-    attemptedFallbacks > 0 ||
-    (model !== null && model !== MODEL_ALIAS && !model.toLowerCase().includes("gemini"));
+  const servedByFallback = modelGroup
+    ? modelGroup === FALLBACK_MODEL_ALIAS
+    : attemptedFallbacks > 0 ||
+      (model !== null && model !== MODEL_ALIAS && !model.toLowerCase().includes("gemini"));
   const toolCalls: ToolCall[] = Array.isArray(message.tool_calls)
     ? message.tool_calls.filter((call: any) => call?.type === "function" && typeof call?.id === "string")
     : [];
