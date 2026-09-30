@@ -4,6 +4,7 @@ import { getMyAppointments, getMyBills, getMyPrescriptions, getMyProfile } from 
 import { getMySchedule, getPatientHistory, getPatientSummary } from "./tools-doctor.ts";
 import { getAppointments, getBills, getUnbilledVisits, searchPatients } from "./tools-receptionist.ts";
 import { getFollowups, getMyWaitlist } from "./tools-automations.ts";
+import { searchKnowledge } from "./tools-knowledge.ts";
 import { proposalTools } from "./actions.ts";
 import type { ToolCall } from "./gateway.ts";
 
@@ -24,6 +25,7 @@ const REGISTRY: ToolDefinition[] = [
   getBills,
   getMyWaitlist,
   getFollowups,
+  searchKnowledge,
 ];
 
 const MAX_TOOL_RESULT_LENGTH = 12_000;

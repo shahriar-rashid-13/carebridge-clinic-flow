@@ -2,6 +2,9 @@ export const MODEL_ALIAS = "carebridge-agent";
 // Used for the remaining rounds of a turn after the gateway fell back, because
 // Gemini rejects tool-call history that lacks its own thought signatures.
 export const FALLBACK_MODEL_ALIAS = "carebridge-agent-fallback";
+// Must match the model and dimension used to embed public.rag_documents.
+export const EMBED_MODEL_ALIAS = "carebridge-embed";
+export const EMBED_DIMENSIONS = 768;
 
 export type ToolCall = {
   id: string;
@@ -92,4 +95,35 @@ export async function callGateway(options: {
     servedByFallback,
     usage: data?.usage ?? null,
   };
+}
+
+export type EmbedResult = { ok: true; embedding: number[] } | { ok: false; detail: string };
+
+export async function embedText(text: string, timeoutMs: number): Promise<EmbedResult> {
+  const baseUrl = Deno.env.get("LITELLM_BASE_URL")?.replace(/\/+$/, "");
+  const apiKey = Deno.env.get("LITELLM_API_KEY");
+  if (!baseUrl || !apiKey) return { ok: false, detail: "missing gateway env" };
+
+  try {
+    const response = await fetch(`${baseUrl}/embeddings`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
+      body: JSON.stringify({ model: EMBED_MODEL_ALIAS, input: text }),
+      signal: AbortSignal.timeout(timeoutMs),
+    });
+    if (!response.ok) {
+      return {
+        ok: false,
+        detail: `embeddings ${response.status}: ${(await response.text().catch(() => "")).slice(0, 300)}`,
+      };
+    }
+    const data = await response.json().catch(() => null);
+    const embedding = data?.data?.[0]?.embedding;
+    if (!Array.isArray(embedding) || embedding.length !== EMBED_DIMENSIONS) {
+      return { ok: false, detail: "embeddings returned an unexpected vector" };
+    }
+    return { ok: true, embedding };
+  } catch (err) {
+    return { ok: false, detail: err instanceof Error ? err.message : String(err) };
+  }
 }
