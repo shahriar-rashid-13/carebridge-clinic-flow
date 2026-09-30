@@ -2,6 +2,8 @@ export const MODEL_ALIAS = "carebridge-agent";
 // Used for the remaining rounds of a turn after the gateway fell back, because
 // Gemini rejects tool-call history that lacks its own thought signatures.
 export const FALLBACK_MODEL_ALIAS = "carebridge-agent-fallback";
+// Gateway model groups that serve Gemini; any other group is a non-Gemini fallback.
+const GEMINI_MODEL_GROUPS = new Set([MODEL_ALIAS, "carebridge-agent-retry"]);
 // Must match the model and dimension used to embed public.rag_documents.
 export const EMBED_MODEL_ALIAS = "carebridge-embed";
 export const EMBED_DIMENSIONS = 768;
@@ -84,7 +86,7 @@ export async function callGateway(options: {
   const modelGroup = response.headers.get("x-litellm-model-group");
   const attemptedFallbacks = Number(response.headers.get("x-litellm-attempted-fallbacks")) || 0;
   const servedByFallback = modelGroup
-    ? modelGroup === FALLBACK_MODEL_ALIAS
+    ? !GEMINI_MODEL_GROUPS.has(modelGroup)
     : attemptedFallbacks > 0 ||
       (model !== null && model !== MODEL_ALIAS && !model.toLowerCase().includes("gemini"));
   const toolCalls: ToolCall[] = Array.isArray(message.tool_calls)

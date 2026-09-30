@@ -114,6 +114,16 @@ describe("callGateway", () => {
     await expect(call()).resolves.toMatchObject({ ok: true, servedByFallback: true });
   });
 
+  it("detects the second fallback model group", async () => {
+    fetchMock.mockResolvedValue(
+      completion({ content: "x" }, "qwen/qwen3.8-27b:free", {
+        "x-litellm-attempted-fallbacks": "3",
+        "x-litellm-model-group": "carebridge-agent-fallback-2",
+      }),
+    );
+    await expect(call()).resolves.toMatchObject({ ok: true, servedByFallback: true });
+  });
+
   it("detects a fallback from a non-Gemini model name", async () => {
     fetchMock.mockResolvedValue(
       completion({ content: "x" }, "openrouter/nvidia/nemotron-3-ultra-550b-a55b:free"),
