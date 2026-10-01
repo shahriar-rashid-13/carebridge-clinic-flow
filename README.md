@@ -76,6 +76,17 @@ doctor, date, and slot. `get_taken_slots` exposes taken times without revealing 
 - `search_knowledge` embeds the question, calls the RPC (top 5), and anonymises names before the
   model sees the text.
 
+## Metrics (1 October 2026)
+
+- Tests: 209 Vitest tests and 10 Playwright end-to-end tests pass.
+- RAG retrieval (hybrid search, clean index, top 5): hit rate 1.00 on matching queries, 0.96 on
+  edge queries, 0.97 on typo-and-junk queries; out-of-scope questions return nothing (5 of 5).
+  With 300 noise rows included, noisy-query hit rate drops to 0.47, which is why noise rows are
+  flagged and hidden. Details: `carebridge-rag/eval/RAG_EVAL_REPORT.md`.
+- Specialization from symptoms (Track 4): 100% on held-out visit notes and 79.2% on hand-written
+  descriptions (TF-IDF + logistic regression); 89.6% on hand-written descriptions with Gemini
+  zero-shot. Details: `carebridge-rag/eval/CLASSIFICATION_REPORT.md`.
+
 ## Local development
 
 Requirements: Node.js 20+ and npm.
