@@ -83,7 +83,8 @@ export const Route = createFileRoute("/_authenticated/book")({
 });
 
 function BookPage() {
-  const { doctors, bookAppointment, currentPatientId, isSlotTaken, role } = useClinic();
+  const { doctors, bookAppointment, currentPatientId, isSlotTaken, loadTakenSlots, role } =
+    useClinic();
   const navigate = useNavigate();
   const active = React.useMemo(() => doctors.filter((d) => d.active), [doctors]);
   const [doctorId, setDoctorId] = React.useState(active[0]?.id ?? "");
@@ -113,6 +114,14 @@ function BookPage() {
   const doctor = doctors.find((d) => d.id === doctorId);
   const dayOk = doctor ? doctor.days.includes(weekdayOf(date)) : false;
   const allTaken = !!doctor && dayOk && doctor.slots.every((s) => isSlotTaken(doctorId, date, s));
+
+  React.useEffect(() => {
+    void loadTakenSlots(doctorId, date);
+  }, [doctorId, date, loadTakenSlots]);
+
+  React.useEffect(() => {
+    if (slot && isSlotTaken(doctorId, date, slot)) setSlot("");
+  }, [slot, doctorId, date, isSlotTaken]);
 
   const join = async (preferredSlot: string | null) => {
     if (!doctor) return;
@@ -155,6 +164,7 @@ function BookPage() {
       navigate({ to: "/appointments" });
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Could not request appointment.");
+      void loadTakenSlots(doctorId, date);
     }
   };
 

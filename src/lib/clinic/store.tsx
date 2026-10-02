@@ -99,6 +99,9 @@ interface ClinicState {
   markInvoicePaid: (id: string, method: string) => Promise<void>;
 
   isSlotTaken: (doctorId: string, date: string, slot: string) => boolean;
+
+  /** Loads slots held by any patient for one doctor and day, so isSlotTaken sees them. */
+  loadTakenSlots: (doctorId: string, date: string) => Promise<void>;
 }
 
 const ClinicContext = React.createContext<ClinicState | null>(null);
@@ -249,6 +252,9 @@ export function ClinicProvider({ children }: { children: React.ReactNode }) {
 
   const [reloadKey, setReloadKey] = React.useState(0);
 
+  // Keys are `${doctorId}|${date}|${slot}` for slots held by other patients.
+  const [takenSlots, setTakenSlots] = React.useState<Set<string>>(() => new Set());
+
   React.useEffect(() => {
     if (profile?.role) {
       setRole(profile.role);
@@ -330,6 +336,27 @@ export function ClinicProvider({ children }: { children: React.ReactNode }) {
       : emptyPatient("", "", ""));
 
   const currentDoctor = doctors.find((doctor) => doctor.id === currentDoctorId) ?? emptyDoctor;
+
+  const loadTakenSlots = React.useCallback(async (doctorId: string, date: string) => {
+    if (!doctorId || !date) return;
+    const { data, error: slotsError } = await supabase.rpc("get_taken_slots", {
+      p_doctor_id: doctorId,
+      p_from: date,
+      p_to: date,
+    });
+    if (slotsError) {
+      setError(rowError("Loading taken slots", slotsError));
+      return;
+    }
+    setTakenSlots((current) => {
+      const prefix = `${doctorId}|${date}|`;
+      const next = new Set([...current].filter((key) => !key.startsWith(prefix)));
+      for (const row of (data ?? []) as Row[]) {
+        next.add(`${prefix}${String(row["time_slot"])}`);
+      }
+      return next;
+    });
+  }, []);
 
   const value: ClinicState = {
     role,
@@ -756,6 +783,7 @@ export function ClinicProvider({ children }: { children: React.ReactNode }) {
      * SLOT AVAILABILITY
      */
     isSlotTaken: (doctorId, date, slot) =>
+      takenSlots.has(`${doctorId}|${date}|${slot}`) ||
       appointments.some(
         (appointment) =>
           appointment.doctorId === doctorId &&
@@ -763,6 +791,8 @@ export function ClinicProvider({ children }: { children: React.ReactNode }) {
           appointment.slot === slot &&
           appointment.status !== "Cancelled",
       ),
+
+    loadTakenSlots,
   };
 
   if (isAuthenticated && loading) {

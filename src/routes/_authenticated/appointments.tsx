@@ -31,7 +31,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { EmptyState, PageHeader, Panel } from "@/components/clinic/page";
-import { PatientWaitlistPanel, ReceptionAutomationsPanel } from "@/components/clinic/automation-panels";
+import {
+  PatientWaitlistPanel,
+  ReceptionAutomationsPanel,
+} from "@/components/clinic/automation-panels";
 import { StatusBadge } from "@/components/clinic/status-badge";
 import { useClinic } from "@/lib/clinic/store";
 import { prettyDate, weekdayOf } from "@/lib/clinic/data";
@@ -318,9 +321,13 @@ function AppointmentsPage() {
 }
 
 function RescheduleDialog({ appt, onClose }: { appt: Appointment | null; onClose: () => void }) {
-  const { getDoctor, rescheduleAppointment, isSlotTaken } = useClinic();
+  const { getDoctor, rescheduleAppointment, isSlotTaken, loadTakenSlots } = useClinic();
   const [date, setDate] = React.useState("");
   const [slot, setSlot] = React.useState("");
+
+  React.useEffect(() => {
+    if (appt) void loadTakenSlots(appt.doctorId, date);
+  }, [appt, date, loadTakenSlots]);
 
   React.useEffect(() => {
     if (appt) {
