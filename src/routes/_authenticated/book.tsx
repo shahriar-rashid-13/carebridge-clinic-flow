@@ -1,16 +1,68 @@
 import * as React from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { toast } from "sonner";
-import { Check } from "lucide-react";
+import { Check, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { PageHeader, Panel } from "@/components/clinic/page";
 import { useClinic } from "@/lib/clinic/store";
 import { joinWaitlist } from "@/lib/clinic/automations";
 import { money, prettyDate, shiftDays, weekdayOf } from "@/lib/clinic/data";
+import {
+  DEFAULT_DOCTOR_QUERY,
+  filterDoctors,
+  groupDoctors,
+  sortDays,
+  specialtiesOf,
+  workingDaysOf,
+  type DoctorGroup,
+  type DoctorQuery,
+  type DoctorSort,
+} from "@/lib/clinic/doctor-filters";
 import { cn } from "@/lib/utils";
+
+const SELECTED_DATE = "selected-date";
+
+function FilterSelect({
+  id,
+  label,
+  value,
+  onChange,
+  options,
+}: {
+  id: string;
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  options: { value: string; label: string }[];
+}) {
+  return (
+    <div>
+      <Label htmlFor={id}>{label}</Label>
+      <Select value={value} onValueChange={onChange}>
+        <SelectTrigger id={id} className="mt-2">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          {options.map((option) => (
+            <SelectItem key={option.value} value={option.value}>
+              {option.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </div>
+  );
+}
 
 export const Route = createFileRoute("/_authenticated/book")({
   head: () => ({
@@ -33,7 +85,7 @@ export const Route = createFileRoute("/_authenticated/book")({
 function BookPage() {
   const { doctors, bookAppointment, currentPatientId, isSlotTaken, role } = useClinic();
   const navigate = useNavigate();
-  const active = doctors.filter((d) => d.active);
+  const active = React.useMemo(() => doctors.filter((d) => d.active), [doctors]);
   const [doctorId, setDoctorId] = React.useState(active[0]?.id ?? "");
   const [date, setDate] = React.useState(shiftDays(1));
   const [slot, setSlot] = React.useState("");
@@ -41,6 +93,22 @@ function BookPage() {
   const [notes, setNotes] = React.useState("");
   const [waitSlot, setWaitSlot] = React.useState<string | null>(null);
   const [joining, setJoining] = React.useState(false);
+  const [query, setQuery] = React.useState<DoctorQuery>(DEFAULT_DOCTOR_QUERY);
+
+  const updateQuery = (patch: Partial<DoctorQuery>) => setQuery((q) => ({ ...q, ...patch }));
+  const specialties = React.useMemo(() => specialtiesOf(active), [active]);
+  const workingDays = React.useMemo(() => workingDaysOf(active), [active]);
+  const visible = React.useMemo(
+    () =>
+      filterDoctors(active, {
+        ...query,
+        day: query.day === SELECTED_DATE ? weekdayOf(date) : query.day,
+      }),
+    [active, query, date],
+  );
+  const sections = React.useMemo(() => groupDoctors(visible, query.group), [visible, query.group]);
+  const filtersActive =
+    query.search.trim() !== "" || query.specialty !== "all" || query.day !== "any";
 
   const doctor = doctors.find((d) => d.id === doctorId);
   const dayOk = doctor ? doctor.days.includes(weekdayOf(date)) : false;
@@ -99,38 +167,135 @@ function BookPage() {
       />
 
       <Panel title="1 · Choose a doctor">
-        <div className="grid gap-3 sm:grid-cols-2">
-          {active.map((d) => (
-            <button
-              key={d.id}
-              type="button"
-              onClick={() => {
-                setDoctorId(d.id);
-                setSlot("");
-                setWaitSlot(null);
-              }}
-              className={cn(
-                "rounded-lg border p-4 text-left transition-colors",
-                doctorId === d.id
-                  ? "border-primary bg-primary/5"
-                  : "border-border bg-card hover:bg-linen",
-              )}
-            >
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-medium">{d.name}</p>
-                  <p className="text-xs text-muted-foreground">{d.specialty}</p>
-                </div>
-                {doctorId === d.id && <Check className="size-4 shrink-0 text-primary" />}
-              </div>
-              <p className="mt-3 text-xs text-muted-foreground">{d.bio}</p>
-              <p className="mt-3 text-xs">
-                <span className="text-muted-foreground">Works </span>
-                {d.days.join(", ")} · {money(d.fee)}
-              </p>
-            </button>
-          ))}
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-[minmax(0,1.4fr)_repeat(4,minmax(0,1fr))]">
+          <div className="md:col-span-2 xl:col-span-1">
+            <Label htmlFor="doctor-search">Search</Label>
+            <div className="relative mt-2">
+              <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                id="doctor-search"
+                type="search"
+                value={query.search}
+                onChange={(e) => updateQuery({ search: e.target.value })}
+                placeholder="Name, specialty or room"
+                className="pl-9"
+              />
+            </div>
+          </div>
+          <FilterSelect
+            id="doctor-specialty"
+            label="Specialty"
+            value={query.specialty}
+            onChange={(specialty) => updateQuery({ specialty })}
+            options={[
+              { value: "all", label: "All specialties" },
+              ...specialties.map((s) => ({ value: s, label: s })),
+            ]}
+          />
+          <FilterSelect
+            id="doctor-day"
+            label="Available on"
+            value={query.day}
+            onChange={(day) => updateQuery({ day })}
+            options={[
+              { value: "any", label: "Any day" },
+              { value: SELECTED_DATE, label: `Your date (${weekdayOf(date)})` },
+              ...workingDays.map((d) => ({ value: d, label: d })),
+            ]}
+          />
+          <FilterSelect
+            id="doctor-sort"
+            label="Sort by"
+            value={query.sort}
+            onChange={(sort) => updateQuery({ sort: sort as DoctorSort })}
+            options={[
+              { value: "name", label: "Name (A–Z)" },
+              { value: "fee-asc", label: "Fee (low to high)" },
+              { value: "fee-desc", label: "Fee (high to low)" },
+              { value: "days", label: "Most available" },
+            ]}
+          />
+          <FilterSelect
+            id="doctor-group"
+            label="Group by"
+            value={query.group}
+            onChange={(group) => updateQuery({ group: group as DoctorGroup })}
+            options={[
+              { value: "none", label: "No grouping" },
+              { value: "specialty", label: "Specialty" },
+              { value: "availability", label: "Working days" },
+            ]}
+          />
         </div>
+
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
+          <p>
+            Showing {visible.length} of {active.length} doctors
+            {doctor && !visible.some((d) => d.id === doctor.id) && (
+              <> · Selected: {doctor.name} (hidden by the filters)</>
+            )}
+          </p>
+          {filtersActive && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => setQuery(DEFAULT_DOCTOR_QUERY)}
+            >
+              Clear filters
+            </Button>
+          )}
+        </div>
+
+        {visible.length === 0 ? (
+          <p className="mt-3 rounded-md border border-dashed border-border bg-linen/60 px-4 py-6 text-center text-sm text-muted-foreground">
+            No doctor matches these filters.
+          </p>
+        ) : (
+          <div className="mt-3 space-y-6">
+            {sections.map((section) => (
+              <section key={section.key} aria-label={section.label ?? "Doctors"}>
+                {section.label && (
+                  <h3 className="mb-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                    {section.label} <span className="font-normal">({section.doctors.length})</span>
+                  </h3>
+                )}
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                  {section.doctors.map((d) => (
+                    <button
+                      key={d.id}
+                      type="button"
+                      onClick={() => {
+                        setDoctorId(d.id);
+                        setSlot("");
+                        setWaitSlot(null);
+                      }}
+                      className={cn(
+                        "flex flex-col rounded-lg border p-4 text-left transition-colors",
+                        doctorId === d.id
+                          ? "border-primary bg-primary/5"
+                          : "border-border bg-card hover:bg-linen",
+                      )}
+                    >
+                      <div className="flex w-full items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-medium">{d.name}</p>
+                          <p className="text-xs text-muted-foreground">{d.specialty}</p>
+                        </div>
+                        {doctorId === d.id && <Check className="size-4 shrink-0 text-primary" />}
+                      </div>
+                      <p className="mt-3 line-clamp-2 text-xs text-muted-foreground">{d.bio}</p>
+                      <p className="mt-auto pt-3 text-xs">
+                        <span className="text-muted-foreground">Works </span>
+                        {sortDays(d.days).join(", ")} · {money(d.fee)}
+                      </p>
+                    </button>
+                  ))}
+                </div>
+              </section>
+            ))}
+          </div>
+        )}
       </Panel>
 
       <Panel title="2 · Pick a date and time">
@@ -150,7 +315,7 @@ function BookPage() {
               className="mt-2"
             />
             <p className="mt-2 text-xs text-muted-foreground">
-              {doctor ? `Available ${doctor.days.join(", ")}` : ""}
+              {doctor ? `Available ${sortDays(doctor.days).join(", ")}` : ""}
             </p>
           </div>
           <div>
@@ -179,8 +344,12 @@ function BookPage() {
                       }}
                       className={cn(
                         "rounded-full border px-3.5 py-1.5 text-xs transition-colors",
-                        taken && waitSlot !== s && "border-border bg-muted text-muted-foreground/60 line-through",
-                        taken && waitSlot === s && "border-[#c2185b] bg-muted text-[#c2185b] line-through",
+                        taken &&
+                          waitSlot !== s &&
+                          "border-border bg-muted text-muted-foreground/60 line-through",
+                        taken &&
+                          waitSlot === s &&
+                          "border-[#c2185b] bg-muted text-[#c2185b] line-through",
                         !taken && slot === s && "border-primary bg-primary text-primary-foreground",
                         !taken && slot !== s && "border-border bg-card hover:bg-linen",
                       )}
@@ -200,7 +369,12 @@ function BookPage() {
                 </p>
                 <div className="flex gap-2">
                   {waitSlot && (
-                    <Button type="button" size="sm" disabled={joining} onClick={() => void join(waitSlot)}>
+                    <Button
+                      type="button"
+                      size="sm"
+                      disabled={joining}
+                      onClick={() => void join(waitSlot)}
+                    >
                       Wait for {waitSlot}
                     </Button>
                   )}
