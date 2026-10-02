@@ -26,6 +26,8 @@ export async function signIn(page: Page, role: Role) {
 /** Row on /appointments whose text contains `text`, after searching for it. */
 export async function appointmentRow(page: Page, text: string) {
   await page.goto("/appointments");
+  // Clinic data can load twice after sign-in; a late response would overwrite later changes.
+  await page.waitForLoadState("networkidle");
   await page.getByPlaceholder(/^Search /).fill(text);
   return page.locator("li").filter({ hasText: text });
 }

@@ -9,7 +9,11 @@ test.describe.serial("booking flow", () => {
   test("patient requests an appointment", async ({ page }) => {
     await signIn(page, "patient");
     await page.goto("/book");
+    // Slots held by other patients arrive from get_taken_slots after the doctor or date changes.
+    const takenSlots = () => page.waitForResponse((r) => r.url().includes("/rpc/get_taken_slots"));
+    const doctorSlots = takenSlots();
     await page.getByRole("button", { name: /Marcus Vance/ }).click();
+    await doctorSlots;
 
     const slot = page
       .getByRole("button", { name: /^\d{2}:\d{2} (AM|PM)$/ })
@@ -19,7 +23,11 @@ test.describe.serial("booking flow", () => {
       const day = new Date();
       day.setDate(day.getDate() + offset);
       const iso = `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, "0")}-${String(day.getDate()).padStart(2, "0")}`;
-      await page.locator("#date").fill(iso);
+      if ((await page.locator("#date").inputValue()) !== iso) {
+        const dateSlots = takenSlots();
+        await page.locator("#date").fill(iso);
+        await dateSlots;
+      }
       if ((await slot.count()) === 0) continue;
       await slot.first().click();
       booked = true;
