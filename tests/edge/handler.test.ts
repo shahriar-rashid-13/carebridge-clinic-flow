@@ -6,7 +6,7 @@ import { edgeClinic, ID } from "../helpers/edge";
 const state = vi.hoisted(() => ({ client: null as unknown }));
 vi.mock("@supabase/supabase-js", () => ({ createClient: vi.fn(() => state.client) }));
 
-const { handler } = await import("../../supabase/functions/carebridge-ai-v2/index.ts");
+const { handler, safeHandler } = await import("../../supabase/functions/carebridge-ai-v2/index.ts");
 // Read at import time; mock call history is cleared before tests run.
 const servedHandler = denoServe.mock.calls[0]?.[0];
 
@@ -104,8 +104,9 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-it("registers the handler with Deno.serve", () => {
-  expect(servedHandler).toBe(handler);
+it("registers the error-reporting wrapper with Deno.serve", () => {
+  expect(servedHandler).toBe(safeHandler);
+  expect(typeof handler).toBe("function");
 });
 
 describe("request checks", () => {

@@ -1,6 +1,7 @@
 import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2";
 import { executeAction, type ActionResult } from "./actions.ts";
 import { callGateway, FALLBACK_MODEL_ALIAS, MODEL_ALIAS, type GatewayMessage } from "./gateway.ts";
+import { reportError, type ErrorReport } from "./sentry.ts";
 import { isUuid, ROLES, todayIn, type Role, type ToolContext } from "./shared.ts";
 import { executeToolCall, toolSchemas, toolsForRole, type ToolTrace } from "./tools.ts";
 
@@ -109,6 +110,7 @@ export async function handler(req: Request): Promise<Response> {
   const requestId = crypto.randomUUID();
   const fail = (status: number, error: string, detail?: string) => {
     if (detail) console.error(JSON.stringify({ request_id: requestId, status, detail }));
+    if (status >= 500) reportInBackground({ message: error, detail, status, requestId });
     return json({ error, request_id: requestId }, status);
   };
 
@@ -393,4 +395,20 @@ export async function handler(req: Request): Promise<Response> {
   });
 }
 
-Deno.serve(handler);
+function reportInBackground(report: ErrorReport) {
+  const pending = reportError(report);
+  // Keeps the worker alive until the Sentry request finishes after the response is sent.
+  (globalThis as { EdgeRuntime?: { waitUntil(p: Promise<unknown>): void } }).EdgeRuntime?.waitUntil(pending);
+}
+
+export async function safeHandler(req: Request): Promise<Response> {
+  try {
+    return await handler(req);
+  } catch (err) {
+    reportInBackground({ message: err instanceof Error ? err.message : String(err), status: 500 });
+    console.error(err);
+    return json({ error: "AI service is unavailable." }, 500);
+  }
+}
+
+Deno.serve(safeHandler);

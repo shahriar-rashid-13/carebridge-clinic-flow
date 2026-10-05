@@ -14,6 +14,7 @@ import { useEffect, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
+import { captureError } from "../lib/sentry";
 import { ClinicProvider } from "@/lib/clinic/store";
 import { ThemeProvider } from "@/lib/theme/theme-context";
 import { AppShell } from "@/components/clinic/app-shell";
@@ -47,6 +48,7 @@ function ErrorComponent({ error, reset }: ErrorComponentProps) {
   const router = useRouter();
   useEffect(() => {
     reportLovableError(error, { boundary: "tanstack_root_error_component" });
+    captureError(error, { boundary: "root_error_component" });
   }, [error]);
 
   return (
