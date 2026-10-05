@@ -1,3 +1,4 @@
+import { embedGte } from "./embed-gte.ts";
 import { embedText } from "./gateway.ts";
 import { enumArg, textArg, type ToolDefinition } from "./shared.ts";
 
@@ -73,21 +74,35 @@ export const searchKnowledge: ToolDefinition = {
     const recordType = enumArg(args, "record_type", RECORD_TYPES);
     const specialization = enumArg(args, "specialization", SPECIALIZATIONS);
 
-    const embedded = await embedText(query, EMBED_TIMEOUT_MS);
-    if (!embedded.ok) {
-      console.warn(JSON.stringify({ tool: "search_knowledge", embed_fallback: embedded.detail }));
+    // gte-small covers every row; the Gemini embedding only covers the original 2,260 rows.
+    let mode: "gte" | "gemini" | "keyword_only" = "keyword_only";
+    let queryEmbeddingGte: string | null = null;
+    let queryEmbedding: string | null = null;
+    const gte = await embedGte(query);
+    if (gte.ok) {
+      mode = "gte";
+      queryEmbeddingGte = `[${gte.embedding.join(",")}]`;
+    } else {
+      console.warn(JSON.stringify({ tool: "search_knowledge", gte_fallback: gte.detail }));
+      const embedded = await embedText(query, EMBED_TIMEOUT_MS);
+      if (embedded.ok) {
+        mode = "gemini";
+        queryEmbedding = `[${embedded.embedding.join(",")}]`;
+      } else {
+        console.warn(JSON.stringify({ tool: "search_knowledge", embed_fallback: embedded.detail }));
+      }
     }
 
     const { data, error } = await ctx.db.rpc("match_rag_documents", {
       query_text: query,
-      query_embedding: embedded.ok ? `[${embedded.embedding.join(",")}]` : null,
+      query_embedding: queryEmbedding,
+      query_embedding_gte: queryEmbeddingGte,
       match_count: MATCH_COUNT,
       filter_record_type: recordType,
       filter_specialization: specialization,
     });
     if (error) throw new Error(`match_rag_documents failed: ${error.message}`);
 
-    const mode = embedded.ok ? "hybrid" : "keyword_only";
     const results = (data ?? []).map((row: any) => ({
       source: SOURCE_LABEL[row.record_type] ?? "Clinic knowledge",
       specialization: row.specialization ?? null,

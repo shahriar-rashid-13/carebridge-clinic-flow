@@ -77,7 +77,31 @@ describe("search_knowledge", () => {
     }
   });
 
-  it("runs a hybrid search and returns anonymised results", async () => {
+  it("searches with the gte-small query embedding when the runtime model works", async () => {
+    const clinic = edgeClinic();
+    const run = vi.fn().mockResolvedValue(Array.from({ length: 384 }, () => 0.05));
+    vi.stubGlobal("Supabase", {
+      ai: {
+        Session: class {
+          run = run;
+        },
+      },
+    });
+    clinic.rpcResult("match_rag_documents", {
+      data: [{ record_type: "faq", content: "Q: Cancel? A: Open My Appointments.", similarity: 0.93 }],
+    });
+
+    const result = await searchKnowledge.run({ query: "how do I cancel" }, clinic.ctx("patient"));
+
+    expect(run).toHaveBeenCalledWith("how do I cancel", { mean_pool: true, normalize: true });
+    const [call] = clinic.rpcCalls("match_rag_documents");
+    expect(String(call?.args["query_embedding_gte"])).toMatch(/^\[0\.05,/);
+    expect(call?.args["query_embedding"]).toBeNull();
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(result).toMatchObject({ ok: true, mode: "gte", results: [{ source: "Clinic FAQ", relevance: 0.93 }] });
+  });
+
+  it("falls back to the Gemini embedding when gte-small fails", async () => {
     const clinic = edgeClinic();
     fetchMock.mockResolvedValue(embeddingResponse());
     clinic.rpcResult("match_rag_documents", {
@@ -106,9 +130,10 @@ describe("search_knowledge", () => {
       filter_specialization: null,
     });
     expect(String(call?.args["query_embedding"])).toMatch(/^\[0\.01,/);
+    expect(call?.args["query_embedding_gte"]).toBeNull();
     expect(result).toMatchObject({
       ok: true,
-      mode: "hybrid",
+      mode: "gemini",
       results: [
         {
           source: "Anonymised past visit note (another patient)",
@@ -121,7 +146,7 @@ describe("search_knowledge", () => {
     expect(JSON.stringify(result)).not.toMatch(/Sabbir|Patwary|Tanvir|Ahmed|VN-000001/);
   });
 
-  it("falls back to keyword search when embedding fails", async () => {
+  it("falls back to keyword search when both embeddings fail", async () => {
     const clinic = edgeClinic();
     fetchMock.mockResolvedValue(new Response("quota exceeded", { status: 429 }));
     clinic.rpcResult("match_rag_documents", {
