@@ -26,6 +26,9 @@ const SOURCE_LABEL: Record<string, string> = {
 };
 
 const MATCH_COUNT = 5;
+// Tuned with carebridge-rag/scripts/rag-eval.mjs --model gte --sweep (eval/gte-cutoff-sweep.json):
+// 0.76 is the lowest value where every out-of-scope query returns nothing; above 0.84 recall drops.
+const MIN_SIMILARITY_GTE = 0.82;
 const EMBED_TIMEOUT_MS = 8_000;
 
 const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -97,6 +100,7 @@ export const searchKnowledge: ToolDefinition = {
       query_text: query,
       query_embedding: queryEmbedding,
       query_embedding_gte: queryEmbeddingGte,
+      min_similarity_gte: MIN_SIMILARITY_GTE,
       match_count: MATCH_COUNT,
       filter_record_type: recordType,
       filter_specialization: specialization,

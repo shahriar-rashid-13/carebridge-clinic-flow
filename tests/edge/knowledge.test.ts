@@ -96,6 +96,7 @@ describe("search_knowledge", () => {
     expect(run).toHaveBeenCalledWith("how do I cancel", { mean_pool: true, normalize: true });
     const [call] = clinic.rpcCalls("match_rag_documents");
     expect(String(call?.args["query_embedding_gte"])).toMatch(/^\[0\.05,/);
+    expect(call?.args["min_similarity_gte"]).toBe(0.82);
     expect(call?.args["query_embedding"]).toBeNull();
     expect(fetchMock).not.toHaveBeenCalled();
     expect(result).toMatchObject({ ok: true, mode: "gte", results: [{ source: "Clinic FAQ", relevance: 0.93 }] });
