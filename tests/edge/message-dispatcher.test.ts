@@ -132,6 +132,60 @@ describe("processRow", () => {
   });
 });
 
+describe("campaign emails", () => {
+  const campaignRow = row({
+    template: "campaign",
+    idempotency_key: "campaign:c-1:p-1",
+    payload: {
+      name: "Rahim",
+      subject: "Time for your check-up",
+      body: "Hello {name},\n\nIt has been a while since your last visit.",
+      campaign_id: "c-1",
+      patient_id: "p-1",
+    },
+  });
+  const config = {
+    apiKey: "re_test",
+    sandboxTo: "me@inbox.test",
+    appUrl: "https://app.test/",
+    functionsUrl: "https://db.test/functions/v1",
+    unsubscribeSecret: "test-secret",
+  };
+
+  it("renders the subject, name, booking link and one-click unsubscribe headers", async () => {
+    resendReply(200, { id: "msg_c1" });
+    const update = await processRow(campaignRow, config, NOW);
+    expect(update.status).toBe("sent");
+    const email = JSON.parse(fetchMock.mock.calls[0]![1]!.body as string);
+    expect(email.subject).toBe("Time for your check-up");
+    expect(email.text).toContain("Hello Rahim,");
+    expect(email.text).toContain("https://app.test/book");
+    expect(email.text).toMatch(/https:\/\/app\.test\/unsubscribe\?token=/);
+    expect(email.headers["List-Unsubscribe"]).toMatch(
+      /^<https:\/\/db\.test\/functions\/v1\/unsubscribe\?token=.+>$/,
+    );
+    expect(email.headers["List-Unsubscribe-Post"]).toBe("List-Unsubscribe=One-Click");
+  });
+
+  it("refuses to send a campaign without an unsubscribe link", async () => {
+    const update = await processRow(
+      campaignRow,
+      { apiKey: "re_test", sandboxTo: "me@inbox.test" },
+      NOW,
+    );
+    expect(update).toMatchObject({
+      status: "failed",
+      last_error: "unsubscribe link not configured",
+    });
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("keeps reminder emails free of list headers", () => {
+    const email = renderEmail(row(), "me@inbox.test", config);
+    expect(email.headers).toBeUndefined();
+  });
+});
+
 describe("retryDelayMinutes", () => {
   it("grows with each attempt and caps at one hour", () => {
     expect([1, 2, 3, 4, 5, 9].map(retryDelayMinutes)).toEqual([1, 5, 15, 60, 60, 60]);

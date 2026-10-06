@@ -84,7 +84,7 @@ function ErrorComponent({ error, reset }: ErrorComponentProps) {
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
   beforeLoad: async ({ location }) => {
-    const publicPaths = new Set(["/", "/login", "/signup"]);
+    const publicPaths = new Set(["/", "/login", "/signup", "/unsubscribe"]);
     if (publicPaths.has(location.pathname)) {
       return;
     }
@@ -157,7 +157,7 @@ function RootShell({ children }: { children: ReactNode }) {
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
   const location = useLocation();
-  const isPublicLayout = ["/", "/login", "/signup"].includes(location.pathname);
+  const isPublicLayout = ["/", "/login", "/signup", "/unsubscribe"].includes(location.pathname);
 
   return (
     <QueryClientProvider client={queryClient}>

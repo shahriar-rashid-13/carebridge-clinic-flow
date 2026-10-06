@@ -1,5 +1,5 @@
 import * as React from "react";
-import { Bell, CalendarClock, CalendarX2, Sparkles, UserX } from "lucide-react";
+import { Bell, CalendarClock, CalendarX2, MailWarning, Sparkles, UserX } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -12,6 +12,7 @@ const KIND_ICON: Record<NotificationKind, React.ComponentType<{ className?: stri
   no_show: UserX,
   waitlist_offer: Sparkles,
   offer_expired: CalendarX2,
+  message_failed: MailWarning,
 };
 
 const timeAgo = (iso: string) => {
@@ -35,7 +36,9 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
     if (latest) toast(latest.title, { description: latest.body });
   }, [latest]);
 
-  return <NotificationsContext.Provider value={notifications}>{children}</NotificationsContext.Provider>;
+  return (
+    <NotificationsContext.Provider value={notifications}>{children}</NotificationsContext.Provider>
+  );
 }
 
 export function NotificationBell() {
@@ -79,12 +82,17 @@ export function NotificationBell() {
             {items.map((item) => {
               const Icon = KIND_ICON[item.kind] ?? Bell;
               return (
-                <li key={item.id} className={cn("flex gap-3 px-4 py-3", !item.read_at && "bg-[#f7f2e9]")}>
+                <li
+                  key={item.id}
+                  className={cn("flex gap-3 px-4 py-3", !item.read_at && "bg-[#f7f2e9]")}
+                >
                   <Icon className="mt-0.5 size-4 shrink-0 text-[#2d5a3d]" />
                   <div className="min-w-0">
                     <p className="text-sm font-medium leading-5">{item.title}</p>
                     <p className="text-xs leading-5 text-muted-foreground">{item.body}</p>
-                    <p className="mt-1 text-[11px] text-muted-foreground">{timeAgo(item.created_at)}</p>
+                    <p className="mt-1 text-[11px] text-muted-foreground">
+                      {timeAgo(item.created_at)}
+                    </p>
                   </div>
                 </li>
               );

@@ -6,6 +6,7 @@ import { reportError } from "../carebridge-ai-v2/sentry.ts";
 import { processRow, type EmailConfig, type OutboxRow } from "./email.ts";
 
 const BATCH_SIZE = 20;
+const SEND_GAP_MS = 600;
 
 async function authorised(req: Request, db: SupabaseClient): Promise<boolean> {
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
@@ -28,7 +29,7 @@ async function notifyReceptionists(
     staff.map((s: { id: string }) => ({
       recipient_id: s.id,
       kind: "message_failed",
-      title: "Reminder email failed",
+      title: row.template === "campaign" ? "Campaign email failed" : "Reminder email failed",
       body: `A ${row.template.replace(/_/g, " ")} email could not be sent after ${row.attempts} attempt(s). Please contact the patient.`,
       appointment_id: row.appointment_id ?? null,
     })),
@@ -52,6 +53,9 @@ export async function handler(req: Request): Promise<Response> {
     apiKey,
     from: Deno.env.get("EMAIL_FROM") || undefined,
     sandboxTo: Deno.env.get("EMAIL_SANDBOX_TO") || undefined,
+    appUrl: Deno.env.get("APP_URL") || undefined,
+    functionsUrl: `${url}/functions/v1`,
+    unsubscribeSecret: Deno.env.get("UNSUBSCRIBE_SECRET") || undefined,
   };
 
   const { data: rows, error } = await db.rpc("claim_outbox_batch", { p_limit: BATCH_SIZE });
@@ -65,7 +69,11 @@ export async function handler(req: Request): Promise<Response> {
   }
 
   const counts: Record<string, number> = {};
+  let first = true;
   for (const row of (rows ?? []) as (OutboxRow & { appointment_id?: string | null })[]) {
+    // Resend's free plan allows 2 requests per second.
+    if (!first) await new Promise((resolve) => setTimeout(resolve, SEND_GAP_MS));
+    first = false;
     const update = await processRow(row, config);
     await db
       .from("message_outbox")

@@ -1,7 +1,8 @@
 import * as React from "react";
 import { supabase } from "@/lib/supabase/client";
 
-export type NotificationKind = "reminder_24h" | "no_show" | "waitlist_offer" | "offer_expired";
+export type NotificationKind =
+  "reminder_24h" | "no_show" | "waitlist_offer" | "offer_expired" | "message_failed";
 
 export type ClinicNotification = {
   id: string;
@@ -139,9 +140,17 @@ export function useNotifications(userId: string | undefined) {
     const unread = items.filter((item) => !item.read_at).map(({ id }) => id);
     if (unread.length === 0) return;
     const readAt = new Date().toISOString();
-    setItems((current) => current.map((item) => (item.read_at ? item : { ...item, read_at: readAt })));
+    setItems((current) =>
+      current.map((item) => (item.read_at ? item : { ...item, read_at: readAt })),
+    );
     await supabase.from("notifications").update({ read_at: readAt }).in("id", unread);
   }, [items]);
 
-  return { items, latest, unread: items.filter((item) => !item.read_at).length, markAllRead, reload: load };
+  return {
+    items,
+    latest,
+    unread: items.filter((item) => !item.read_at).length,
+    markAllRead,
+    reload: load,
+  };
 }
