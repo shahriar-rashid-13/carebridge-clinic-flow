@@ -46,3 +46,14 @@ Performance: 33 findings down to 20, and no WARN-level finding is left except th
 | multiple_permissive_policies | WARN | 7 | One policy per role (patient, doctor, receptionist) keeps each access rule readable and testable. Merging them into one OR policy per action would change nothing for access but risks mistakes; the tables are small. |
 | unused_index | INFO | 13 | Includes the five new foreign key indexes, which have not been used yet. The app has little traffic, so usage statistics are not meaningful; the indexes stay. |
 
+## Day 2 additions (email outbox and recall segments)
+
+Security: 18 findings to 21, all expected.
+
+| Lint | Count | Why |
+|---|---|---|
+| authenticated_security_definer_function_executable | +2 | `recall_segment_members` and `recall_segment_counts` are receptionist RPCs. They raise `42501` for any other role (checked with a patient session). |
+| rls_enabled_no_policy | 1 | `message_events` is written and read only by the `resend-webhook` Edge Function with the service role. No API role needs access, so it has RLS on and no policy on purpose. |
+
+The outbox helpers `claim_outbox_batch` and `dispatcher_token_ok` are executable by `service_role` only, so they add no finding.
+
