@@ -57,3 +57,13 @@ Security: 18 findings to 21, all expected.
 
 The outbox helpers `claim_outbox_batch` and `dispatcher_token_ok` are executable by `service_role` only, so they add no finding.
 
+## Day 2 additions (recall campaigns)
+
+Security: 21 findings to 24, all expected.
+
+| Lint | Count | Why |
+|---|---|---|
+| authenticated_security_definer_function_executable | +3 | `preview_campaign`, `send_campaign` and `campaign_results` are receptionist RPCs. Each calls `require_receptionist()` first and raises `42501` for any other role. |
+
+The internal helpers `campaign_audience`, `email_quota_left` and `require_receptionist` are revoked from `anon` and `authenticated`, so they add no finding. The new tables `campaigns`, `campaign_recipients` and `communication_opt_outs` have RLS on with receptionist-only read policies; all writes go through the RPCs or the `unsubscribe` Edge Function.
+
