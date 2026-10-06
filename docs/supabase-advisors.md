@@ -67,3 +67,11 @@ Security: 21 findings to 24, all expected.
 
 The internal helpers `campaign_audience`, `email_quota_left` and `require_receptionist` are revoked from `anon` and `authenticated`, so they add no finding. The new tables `campaigns`, `campaign_recipients` and `communication_opt_outs` have RLS on with receptionist-only read policies; all writes go through the RPCs or the `unsubscribe` Edge Function.
 
+## Day 2 additions (Google Calendar sync)
+
+Security: 24 findings, unchanged. `enqueue_calendar_job`, `on_appointment_calendar_change` and `claim_calendar_jobs` are revoked from `anon` and `authenticated` (`claim_calendar_jobs` is granted to `service_role` only). `calendar_jobs` has RLS on with a receptionist-only read policy.
+
+## Accepted finding: leaked password protection
+
+`auth_leaked_password_protection` stays open. Checking passwords against HaveIBeenPwned is only available on the Supabase Pro plan, and this demo project runs on the free plan with synthetic patient data only. On a paid production project this setting should be turned on.
+
