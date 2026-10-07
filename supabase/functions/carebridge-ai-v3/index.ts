@@ -21,6 +21,7 @@ import { loadOkf, publicContacts } from "./okf.ts";
 import { runAgent, type AgentRun } from "./run-agent.ts";
 import { loadState, mergeState, saveState } from "./state.ts";
 import { routeMessage } from "./supervisor.ts";
+import { searchKnowledge } from "./tools-knowledge.ts";
 import { createGetPolicy } from "./tools-policy.ts";
 import type { AgentName, ConversationState, RouteDecision } from "./types.ts";
 
@@ -294,7 +295,12 @@ export async function handler(req: Request): Promise<Response> {
     const redactedMessage = turns.at(-1)!.content;
     const injection = detectInjection(message);
 
-    const roleTools = [...toolsForRole(role), GET_POLICY];
+    const roleTools = [
+      ...toolsForRole(role).map((tool) =>
+        tool.name === searchKnowledge.name ? searchKnowledge : tool,
+      ),
+      GET_POLICY,
+    ];
     const allowed = agentsForRole(role, roleTools);
     const routed = await routeMessage({
       message: redactedMessage,

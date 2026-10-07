@@ -21,7 +21,11 @@ Pay at reception after the visit. You cannot pay inside the app.
 
 ## Accepted methods
 
-The clinic accepts **cash only**. Card, mobile banking, and bank transfer are not accepted at present.
+- **Cash**: available.
+- **Card**: not available at present.
+- **Mobile banking**: not available at present.
+
+Please pay in cash until card and mobile banking payments become available.
 
 ## Bill status
 
