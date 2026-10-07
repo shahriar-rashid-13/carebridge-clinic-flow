@@ -2,7 +2,13 @@
 import { describe, expect, it } from "vitest";
 import { execFileSync } from "node:child_process";
 import { toolsForRole } from "../../supabase/functions/carebridge-ai-v2/tools.ts";
-import { agentsForRole, toolsForAgent } from "../../supabase/functions/carebridge-ai-v3/agents.ts";
+import {
+  AGENT_TOOLS,
+  agentsForRole,
+  SHARED_READ_TOOLS,
+  toolsForAgent,
+} from "../../supabase/functions/carebridge-ai-v3/agents.ts";
+import { mergeAgentTexts } from "../../supabase/functions/carebridge-ai-v3/merge.ts";
 import {
   detectEmergency,
   emergencyReply,
@@ -180,10 +186,38 @@ describe("agents", () => {
   it("limits each specialist to its own tools within the role", () => {
     const names = (agent: Parameters<typeof toolsForAgent>[0], role: "patient" | "receptionist") =>
       toolsForAgent(agent, toolsForRole(role)).map((tool) => tool.name);
-    expect(names("billing", "patient")).toEqual(["get_my_bills", "search_knowledge"]);
+    expect(names("billing", "patient").sort()).toEqual([
+      "get_doctors",
+      "get_my_bills",
+      "get_my_profile",
+      "search_knowledge",
+    ]);
     expect(names("scheduling", "patient")).toContain("propose_booking");
     expect(names("scheduling", "patient")).not.toContain("propose_confirm_appointment");
     expect(names("triage", "receptionist")).not.toContain("propose_create_bill");
+  });
+
+  it("gives every specialist the shared read-only lookups", () => {
+    for (const agent of Object.keys(AGENT_TOOLS) as (keyof typeof AGENT_TOOLS)[]) {
+      expect(AGENT_TOOLS[agent]).toEqual(expect.arrayContaining(SHARED_READ_TOOLS));
+    }
+    expect(SHARED_READ_TOOLS.some((name) => name.startsWith("propose_"))).toBe(false);
+  });
+
+  it("gives each tool that changes data to exactly one specialist", () => {
+    const proposeTools = Object.values(AGENT_TOOLS)
+      .flat()
+      .filter((name) => name.startsWith("propose_"));
+    expect(new Set(proposeTools).size).toBe(proposeTools.length);
+  });
+
+  it("maps every role tool to at least one specialist", () => {
+    const mapped = new Set(Object.values(AGENT_TOOLS).flat());
+    const roles = ["patient", "doctor", "receptionist"] as const;
+    const unmapped = roles
+      .flatMap((role) => toolsForRole(role).map((tool) => tool.name))
+      .filter((name) => !mapped.has(name));
+    expect([...new Set(unmapped)]).toEqual([]);
   });
 
   it("learns doctor, date, specialization, and patient from tool arguments", () => {
@@ -224,5 +258,47 @@ describe("keyword router", () => {
     expect(keywordRoute("show my bill", ["triage", "scheduling", "records"], DOCS).agent).toBe(
       "triage",
     );
+  });
+});
+
+describe("mergeAgentTexts", () => {
+  it("keeps a single reply as it is", () => {
+    expect(mergeAgentTexts(["Only one."])).toBe("Only one.");
+    expect(mergeAgentTexts([])).toBeNull();
+  });
+
+  it("drops a reply that cannot look something up when another specialist answered", () => {
+    const merged = mergeAgentTexts([
+      "I do not have access to specific doctor fees. Please check the app.",
+      "Dr. Shamima Nasrin's consultation fee is 800. Saturday has free slots at 09:00 AM.",
+    ]);
+    expect(merged).toBe(
+      "Dr. Shamima Nasrin's consultation fee is 800. Saturday has free slots at 09:00 AM.",
+    );
+  });
+
+  it("keeps the first reply when every specialist says it cannot look it up", () => {
+    expect(mergeAgentTexts(["I cannot see that.", "I do not have access to it."])).toBe(
+      "I cannot see that.",
+    );
+  });
+
+  it("removes sentences that restate an earlier reply", () => {
+    const merged = mergeAgentTexts([
+      "You do not have any unpaid bills.",
+      "Our opening hours on Saturday are 9:00 AM to 5:00 PM. As mentioned, you do not have any unpaid bills.",
+    ]);
+    expect(merged).toBe(
+      "You do not have any unpaid bills.\n\nOur opening hours on Saturday are 9:00 AM to 5:00 PM.",
+    );
+  });
+
+  it("keeps refusals that are not about looking something up", () => {
+    const merged = mergeAgentTexts([
+      "I cannot give a diagnosis, but a Dermatologist fits these symptoms.",
+      "Dr. Tahmina Begum has free slots on Monday at 10:00 AM.",
+    ]);
+    expect(merged).toContain("Dermatologist");
+    expect(merged).toContain("Tahmina Begum");
   });
 });

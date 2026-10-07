@@ -17,6 +17,7 @@ import {
   sanitizeInput,
   type PiiMap,
 } from "./guardrails.ts";
+import { mergeAgentTexts } from "./merge.ts";
 import { loadOkf, publicContacts } from "./okf.ts";
 import { runAgent, type AgentRun } from "./run-agent.ts";
 import { loadState, mergeState, saveState } from "./state.ts";
@@ -372,7 +373,7 @@ export async function handler(req: Request): Promise<Response> {
       }
 
       const texts = runs.map((run) => run.text).filter((text): text is string => Boolean(text));
-      finalText = texts.join("\n\n") || null;
+      finalText = mergeAgentTexts(texts);
       statePatch = {
         ...Object.assign({}, ...runs.map((run) => run.learned)),
         last_agent: runs.at(-1)?.agent ?? decision.agent,

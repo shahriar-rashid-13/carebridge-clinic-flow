@@ -5,6 +5,7 @@ import {
   rerank,
   rerankPrompt,
   searchKnowledge,
+  stripDoses,
   type Candidate,
 } from "../../supabase/functions/carebridge-ai-v3/tools-knowledge.ts";
 import { denoEnv } from "../helpers/deno";
@@ -156,5 +157,36 @@ describe("search_knowledge v3", () => {
     const result = await searchKnowledge.run({ query: "parking on Mars" }, clinic.ctx("patient"));
     expect(result).toMatchObject({ ok: true, results: [] });
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("removes medicine amounts from other patients' prescriptions", async () => {
+    const clinic = edgeClinic();
+    clinic.rpcResult("match_rag_documents", {
+      data: [
+        {
+          doc_id: "RX-000001",
+          record_type: "prescription",
+          content:
+            "Paracetamol 500 mg every 6 hours; Dextromethorphan syrup 10 ml three times daily.",
+          similarity: 0.9,
+        },
+      ],
+    });
+    llmReply('{"ranking": [1]}');
+
+    const result = await searchKnowledge.run({ query: "fever" }, clinic.ctx("doctor"));
+
+    expect((result["results"] as { text: string }[])[0]?.text).toBe(
+      "Paracetamol [dose omitted] every 6 hours; Dextromethorphan syrup [dose omitted] three times daily.",
+    );
+  });
+});
+
+describe("stripDoses", () => {
+  it("keeps FAQ text and strips amounts from visit notes", () => {
+    expect(stripDoses("Take 2 tablets.", "faq")).toBe("Take 2 tablets.");
+    expect(stripDoses("Salbutamol 2 puffs, 1.5 mg nightly.", "visit_note")).toBe(
+      "Salbutamol [dose omitted], [dose omitted] nightly.",
+    );
   });
 });

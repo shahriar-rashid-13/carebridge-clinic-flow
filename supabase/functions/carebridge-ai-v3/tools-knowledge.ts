@@ -11,6 +11,16 @@ const SOURCE_LABEL: Record<string, string> = {
   prescription: "Anonymised past prescription (another patient)",
 };
 
+// Medicine amounts in other patients' records. The assistant must never pass them on as advice.
+const DOSE_AMOUNT =
+  /\b\d+(?:\.\d+)?\s?(?:mg|mcg|µg|g|ml|iu|units?|puffs?|tablets?|tabs?|capsules?|caps?|drops?)\b/gi;
+export const DOSE_OMITTED = "[dose omitted]";
+
+/** Removes medicine amounts from anonymised visit notes and prescriptions. FAQ text is kept. */
+export function stripDoses(text: string, recordType: string): string {
+  return recordType === "faq" ? text : text.replace(DOSE_AMOUNT, DOSE_OMITTED);
+}
+
 export const CANDIDATE_COUNT = 20;
 export const RESULT_COUNT = 5;
 export const RERANK_TIMEOUT_MS = 6_000;
@@ -160,7 +170,7 @@ export const searchKnowledge: ToolDefinition = {
       record_type: String(row.record_type),
       specialization: row.specialization ?? null,
       diagnosis: row.diagnosis ?? null,
-      text: anonymise(String(row.content ?? "")),
+      text: stripDoses(anonymise(String(row.content ?? "")), String(row.record_type)),
       similarity:
         typeof row.similarity === "number" ? Math.round(row.similarity * 100) / 100 : null,
     }));

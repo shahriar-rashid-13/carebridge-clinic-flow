@@ -41,6 +41,7 @@ export function supervisorPrompt(
     "Pick the specialist agent for the latest user message. Allowed agents:",
     ...allowed.map((agent) => `- ${agent}: ${AGENT_SUMMARY[agent]}`),
     "If the message has more than one request, put the other agents in handoffs, in the order the user asked (at most 2).",
+    "Use handoffs only for a separate request that the first agent's area does not cover. A symptom given as the reason for a booking is part of the booking, and a reply such as 'any time is fine' continues the earlier request, so neither needs a handoff.",
     'Choose knowledge: "okf" when an approved clinic policy below answers the question (set okf_id), "rag" for other clinic or health questions that need the knowledge base, "none" for actions and the user\'s own data.',
     "Approved clinic policies:",
     okfCatalog(docs),

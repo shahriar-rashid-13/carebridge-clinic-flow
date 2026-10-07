@@ -122,7 +122,13 @@ describe("supervisor routing", () => {
     expect(body.text).toBe("You have one unpaid bill.");
     expect(llmRequest(0).tools).toBeUndefined();
     expect(llmRequest(0).messages[0].content).toContain("You route messages");
-    expect(toolNames(1)).toEqual(["get_my_bills", "search_knowledge", "get_policy"]);
+    expect(toolNames(1).sort()).toEqual([
+      "get_doctors",
+      "get_my_bills",
+      "get_my_profile",
+      "get_policy",
+      "search_knowledge",
+    ]);
     expect(llmRequest(1).messages[0].content).toContain("billing specialist");
     expect(savedTurn()["p_metadata"]).toMatchObject({
       route: { agent: "billing", source: "model" },

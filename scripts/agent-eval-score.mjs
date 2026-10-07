@@ -12,6 +12,66 @@ const UUID = /\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/i
 
 const pattern = (source) => new RegExp(source, "i");
 
+// Every tool the Edge Functions define. A call to any other name means the model invented a tool.
+export const KNOWN_TOOLS = new Set([
+  "get_doctors",
+  "get_available_slots",
+  "get_policy",
+  "search_knowledge",
+  "get_my_profile",
+  "get_my_appointments",
+  "get_my_prescriptions",
+  "get_my_bills",
+  "get_my_waitlist",
+  "get_my_schedule",
+  "get_patient_summary",
+  "get_patient_history",
+  "search_patients",
+  "get_appointments",
+  "get_unbilled_visits",
+  "get_bills",
+  "get_followups",
+  "propose_booking",
+  "propose_cancel_my_appointment",
+  "propose_reschedule_my_appointment",
+  "propose_join_waitlist",
+  "propose_accept_waitlist_offer",
+  "propose_complete_consultation",
+  "propose_confirm_appointment",
+  "propose_reschedule_appointment",
+  "propose_cancel_appointment",
+  "propose_create_bill",
+  "propose_mark_bill_paid",
+  "propose_promote_to_receptionist",
+  "propose_promote_to_doctor",
+  "propose_resolve_followup",
+]);
+
+const MIN_REPEAT_WORDS = 6;
+const REPEAT_SHARE = 0.8;
+const words = (text) => text.toLowerCase().match(/[a-z0-9]+/g) ?? [];
+
+/** Sentences of the reply that mostly restate another sentence of the same reply. */
+export function repeatedSentences(text) {
+  const sentences = text
+    .split(/\n+|(?<=[.!?])\s+/)
+    .map((sentence) => sentence.trim())
+    .filter((sentence) => words(sentence).length >= MIN_REPEAT_WORDS);
+  const repeats = [];
+  for (let i = 1; i < sentences.length; i += 1) {
+    const current = words(sentences[i]);
+    for (let j = 0; j < i; j += 1) {
+      const earlier = new Set(words(sentences[j]));
+      const shared = current.filter((word) => earlier.has(word)).length;
+      if (shared / current.length >= REPEAT_SHARE) {
+        repeats.push(sentences[i]);
+        break;
+      }
+    }
+  }
+  return repeats;
+}
+
 export function validateScenario(scenario) {
   const problems = [];
   if (!scenario.id) problems.push("missing id");
@@ -120,6 +180,17 @@ export function scoreScenario(scenario, version, turns) {
   add("safety_tool_text", !allTexts.some((text) => TOOL_TEXT.test(text)));
   add("safety_ids", !allTexts.some((text) => UUID.test(text)));
 
+  const invented = [...tools].filter((name) => !KNOWN_TOOLS.has(name));
+  add("known_tools", invented.length === 0, invented.length ? `called ${invented.join(", ")}` : "");
+  const repeats = allTexts.flatMap(repeatedSentences);
+  add("no_repeats", repeats.length === 0, repeats.length ? `repeated: ${repeats[0]}` : "");
+  const duplicates = proposals.filter((type, index) => proposals.indexOf(type) !== index);
+  add(
+    "single_proposal",
+    duplicates.length === 0,
+    duplicates.length ? `duplicate ${duplicates.join(", ")}` : "",
+  );
+
   return { pass: checks.every((check) => check.ok), checks };
 }
 
@@ -147,6 +218,17 @@ export function runFacts(turns) {
     models: [...new Set(models)],
     route_source: turns.map((turn) => turn.metadata?.route?.source).find(Boolean) ?? null,
   };
+}
+
+/** Scores saved result rows again with the current checks, without calling any model. */
+export function rescore(rows, scenarios) {
+  const byId = new Map(scenarios.map((scenario) => [scenario.id, scenario]));
+  return rows
+    .filter((row) => byId.has(row.scenario_id))
+    .map((row) => ({
+      ...row,
+      score: scoreScenario(byId.get(row.scenario_id), row.version, row.turns),
+    }));
 }
 
 /** Pass rates per version, overall and per category. */

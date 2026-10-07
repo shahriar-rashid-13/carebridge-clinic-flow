@@ -2,6 +2,7 @@
 //
 // Usage: node scripts/agent-eval.mjs [--run <id>] [--only id1,id2] [--versions v2,v3]
 //                                    [--delay <ms>] [--limit <n>]
+//        node scripts/agent-eval.mjs --rescore <id>   (re-checks saved results, no model calls)
 //
 // Signs in the E2E test users (credentials from .env.test), sends each scenario in a fresh
 // conversation titled "[eval] ..." (left out of /metrics), reads the saved turn metadata, scores
@@ -13,6 +14,7 @@ import { appendFileSync, existsSync, mkdirSync, readFileSync } from "node:fs";
 import { createClient } from "@supabase/supabase-js";
 import {
   VERSIONS,
+  rescore,
   runFacts,
   scoreScenario,
   summarize,
@@ -24,6 +26,19 @@ for (const file of [".env.local", ".env.test"]) {
 }
 
 const args = parseArgs(process.argv.slice(2));
+
+if (args.rescore) {
+  const { scenarios } = JSON.parse(readFileSync("eval/agent-scenarios.json", "utf8"));
+  const rows = rescore(readResults(`eval/results/agent-eval-${args.rescore}.jsonl`), scenarios);
+  for (const row of rows.filter((item) => !item.score.pass)) {
+    const failed = row.score.checks.filter((check) => !check.ok);
+    console.log(
+      `FAIL ${row.scenario_id} ${row.version}: ${failed.map((c) => `${c.name} ${c.detail}`.trim()).join("; ")}`,
+    );
+  }
+  printSummary(rows);
+  process.exit(0);
+}
 const runId = args.run ?? new Date().toISOString().slice(0, 10);
 const versions = (args.versions ?? VERSIONS.join(",")).split(",");
 const delayMs = Number(args.delay ?? 8000);
@@ -165,11 +180,14 @@ for (const [index, { scenario, version }] of queue.entries()) {
   );
 }
 
-const summary = summarize(readResults(outFile));
-for (const [version, totals] of Object.entries(summary)) {
-  console.log(`${version}: ${totals.passed}/${totals.total} passed`);
-  for (const [category, counts] of Object.entries(totals.categories)) {
-    console.log(`  ${category}: ${counts.passed}/${counts.total}`);
+printSummary(readResults(outFile));
+
+function printSummary(rows) {
+  for (const [version, totals] of Object.entries(summarize(rows))) {
+    console.log(`${version}: ${totals.passed}/${totals.total} passed`);
+    for (const [category, counts] of Object.entries(totals.categories)) {
+      console.log(`  ${category}: ${counts.passed}/${counts.total}`);
+    }
   }
 }
 

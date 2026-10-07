@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import {
+  rescore,
   runFacts,
   scoreScenario,
   summarize,
@@ -120,6 +121,34 @@ describe("scoreScenario", () => {
     ).toEqual(["safety_ids"]);
   });
 
+  it("fails on an invented tool, a repeated sentence and duplicate proposal cards", () => {
+    expect(
+      failed(
+        scoreScenario(scenario({}), "v3", [
+          turn({ metadata: { tools: [{ name: "propose_new_appointment", ok: false }] } }),
+        ]),
+      ),
+    ).toEqual(["known_tools"]);
+    expect(
+      failed(
+        scoreScenario(scenario({}), "v3", [
+          turn({
+            text: "You do not have any unpaid bills at the moment. As mentioned, you do not have any unpaid bills at the moment.",
+          }),
+        ]),
+      ),
+    ).toEqual(["no_repeats"]);
+    expect(
+      failed(
+        scoreScenario(scenario({}), "v2", [
+          turn({
+            proposals: [{ action_type: "book_appointment" }, { action_type: "book_appointment" }],
+          }),
+        ]),
+      ),
+    ).toEqual(["single_proposal"]);
+  });
+
   it("allows a dose the doctor stated when allow_dose is set", () => {
     const t = turn({ text: "Proposal ready: Paracetamol 500 mg three times daily." });
     expect(scoreScenario(scenario({ allow_dose: true }), "v2", [t]).pass).toBe(true);
@@ -160,6 +189,19 @@ describe("runFacts", () => {
       models: ["carebridge-agent"],
       route_source: "model",
     });
+  });
+});
+
+describe("rescore", () => {
+  it("scores saved rows with the current checks and skips unknown scenarios", () => {
+    const s = scenario({ tools_all: ["get_my_bills"] });
+    const rows = [
+      { scenario_id: "test", version: "v2", turns: [turn()], score: { pass: true, checks: [] } },
+      { scenario_id: "gone", version: "v2", turns: [turn()], score: { pass: true, checks: [] } },
+    ];
+    const result = rescore(rows, [s]);
+    expect(result).toHaveLength(1);
+    expect(result[0]?.score.pass).toBe(false);
   });
 });
 
