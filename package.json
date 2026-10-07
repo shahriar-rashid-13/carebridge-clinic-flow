@@ -13,7 +13,8 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "test:e2e": "playwright test",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "okf:build": "node scripts/build-okf.mjs"
   },
   "overrides": {
     "rolldown": "1.2.1"

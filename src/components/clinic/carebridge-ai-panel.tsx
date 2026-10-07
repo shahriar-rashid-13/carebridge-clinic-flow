@@ -59,7 +59,8 @@ const PATIENT_ACTIONS = [
 ] as const;
 
 const AI_FUNCTION = import.meta.env["VITE_AI_FUNCTION"] || "carebridge-ai";
-const USE_AI_V2 = AI_FUNCTION === "carebridge-ai-v2";
+// v3 keeps the v2 request and response shape.
+const USE_AI_V2 = AI_FUNCTION === "carebridge-ai-v2" || AI_FUNCTION === "carebridge-ai-v3";
 
 type AiV2Response = {
   text: string;
