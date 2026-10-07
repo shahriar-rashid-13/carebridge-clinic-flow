@@ -7,6 +7,7 @@ import {
   ClipboardList,
   CreditCard,
   FileText,
+  Gauge,
   LayoutDashboard,
   LogOut,
   Megaphone,
@@ -54,6 +55,7 @@ const NAV: Record<Role, NavItem[]> = {
     { to: "/reports", label: "Reports", icon: PieChart },
     { to: "/campaigns", label: "Campaigns", icon: Megaphone },
     { to: "/ai", label: "CareBridge AI", icon: Sparkles },
+    { to: "/metrics", label: "AI Metrics", icon: Gauge },
   ],
 };
 
