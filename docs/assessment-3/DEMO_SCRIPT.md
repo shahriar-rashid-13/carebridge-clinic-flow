@@ -17,8 +17,8 @@ speak). The Say parts are a guide; use your own words.
 
 - https://carebridge-clinic-flow.vercel.app, signed in as Sarah in one window and Clara in a
   private window.
-- `docs/architecture.png`.
-- `ASSESSMENT_3_REPORT.md`, section 5 (evaluation) and section 6 (no-show model).
+- `docs/assessment-3/architecture.png`.
+- `docs/assessment-3/ASSESSMENT_3_REPORT.md`, section 5 (evaluation) and section 6 (no-show model).
 - The GitHub Actions run for the release commit (green).
 - The shared clinic Google Calendar and the Resend dashboard.
 
@@ -34,7 +34,7 @@ Gemini on a second key and then falls back to OpenRouter." Retry once, then move
 
 ## Scene 1: Introduction and architecture (0:00 to 0:45)
 
-**Show:** `docs/architecture.png`.
+**Show:** `docs/assessment-3/architecture.png`.
 
 **Say:**
 

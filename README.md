@@ -6,10 +6,10 @@ receptionists confirm appointments, handle billing and run recall campaigns, and
 assistant looks things up and proposes actions for the user to confirm.
 
 - Live app: https://carebridge-clinic-flow.vercel.app
-- Assessment 3 report (evaluation results, tracks, credentials): [`ASSESSMENT_3_REPORT.md`](ASSESSMENT_3_REPORT.md)
-- Architecture diagram: [`docs/architecture.png`](docs/architecture.png)
-- Whole-system overview (architecture and data flows): `../PROJECT_OVERVIEW.md` in the parent
-  folder, next to the `carebridge-liteLLM` and `carebridge-rag` repositories.
+- Assessment 3 report (evaluation results, tracks, credentials): [`docs/assessment-3/ASSESSMENT_3_REPORT.md`](docs/assessment-3/ASSESSMENT_3_REPORT.md)
+- Architecture diagram: [`docs/assessment-3/architecture.png`](docs/assessment-3/architecture.png)
+- Whole-project report and system overview: `../FINAL_REPORT.md` and `../docs/PROJECT_OVERVIEW.md`
+  in the parent folder, next to the `carebridge-liteLLM` and `carebridge-rag` repositories.
 
 All patient and doctor data is synthetic.
 
@@ -25,7 +25,7 @@ All patient and doctor data is synthetic.
 | `supabase/functions/calendar-sync/` | Google Calendar sync for confirmed appointments |
 | `supabase/functions/carebridge-ai/`, `embed-check/` | Older direct-Gemini assistant and a gte-small embedding check, kept for reference |
 | `eval/`, `scripts/agent-eval*.mjs` | Agent evaluation: 42 labelled scenarios, runner, scorer, saved results and report |
-| `docs/` | Architecture diagram, Supabase advisor before and after lists |
+| `docs/` | Assessment 3 report, demo script, architecture diagram and advisor lists (`docs/assessment-3/`); older working documents (`docs/history/`) |
 | `tests/` | Vitest unit and Edge Function tests, Playwright end-to-end tests |
 
 ## Assessment 3 additions
@@ -106,7 +106,7 @@ doctor, date, and slot. `get_taken_slots` exposes taken times without revealing 
 ## Metrics
 
 Assessment 3 results (agent task success, search, no-show model) are in
-[`ASSESSMENT_3_REPORT.md`](ASSESSMENT_3_REPORT.md). Tests on 8 October 2026: 464 Vitest tests and
+[`docs/assessment-3/ASSESSMENT_3_REPORT.md`](docs/assessment-3/ASSESSMENT_3_REPORT.md). Tests on 8 October 2026: 464 Vitest tests and
 8 Playwright end-to-end tests pass.
 
 Assessment 2 results (1 October 2026):
@@ -170,7 +170,7 @@ appointments, prescriptions, bills):
 | `20260930000000_rag_documents`, `..._source_idx`, `20260930000200_rag_keyword_fallback` | RAG table, indexes, RLS, hybrid search |
 | `20261002000000_get_taken_slots` | Taken slots for a date range |
 | `20261005000000_rag_gte_small`, `20261005010000_rag_search_use_indexes` | gte-small embedding column and faster search at 20,000+ rows |
-| `20261005020000_advisor_fixes` | Supabase advisor fixes (`docs/supabase-advisors.md`) |
+| `20261005020000_advisor_fixes` | Supabase advisor fixes (`docs/assessment-3/supabase-advisors.md`) |
 | `20261006000000_message_outbox`, `..._dispatcher_timeout` | Email outbox, delivery events, dispatcher cron |
 | `20261006010000_recall_segments`, `20261006020000_campaigns` | Recall segments, campaigns, opt-outs |
 | `20261006040000_calendar_sync` | Google Calendar job queue and cron |
@@ -205,10 +205,13 @@ Never commit keys. The browser only ever receives the publishable key.
 
 ## Other documents
 
-- `ASSESSMENT_3_REPORT.md`: Assessment 3 report; `eval/AGENT_EVAL_REPORT.md`: agent evaluation.
-- `project_description_update.md`: the Assessment 2 brief.
-- `IMPLEMENTATION_PLAN.md`, `CAREBRIDGE_AI_V2_PHASE_B_REPORT.md`, `CAREBRIDGE_GATEWAY_CONTEXT.md`:
-  design notes and reports from building the AI agent.
-- `AGENTS.md`: instructions for coding agents working in this repository.
+| Path | Contents |
+|---|---|
+| `docs/assessment-3/` | `ASSESSMENT_3_REPORT.md` (submission report), `DEMO_SCRIPT.md`, `supabase-advisors.md` (advisor findings before and after), `architecture.mmd` and `.png` |
+| `eval/` | Agent evaluation: scenarios, raw results, `AGENT_EVAL_REPORT.md`, `AGENT_EVAL_NOTES.md` |
+| `docs/history/` | Assessment 2 working documents: implementation plan, AI v2 phase B report and test notes, the A2 demo submission note, and early AI-written audits (`opinions/`). Kept for reference; parts are out of date. |
+| `AGENTS.md` | Instructions for coding agents working in this repository |
+
+The assessment briefs and plans are in `../docs/` in the parent folder.
 
 The original UI was generated with [Lovable](https://lovable.dev) and then connected to Supabase.

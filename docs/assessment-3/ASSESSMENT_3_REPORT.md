@@ -12,7 +12,7 @@ Kaggle no-show dataset, used offline for model evaluation and never loaded into 
 |---|---|
 | Live app | https://carebridge-clinic-flow.vercel.app |
 | Repositories | [carebridge-clinic-flow](https://github.com/shahriar-rashid-13/carebridge-clinic-flow), [carebridge-rag](https://github.com/shahriar-rashid-13/carebridge-rag), [carebridge-liteLLM](https://github.com/shahriar-rashid-13/carebridge-liteLLM), each tagged `assessment-3` |
-| Architecture diagram | [`docs/architecture.png`](docs/architecture.png) (source [`docs/architecture.mmd`](docs/architecture.mmd)) |
+| Architecture diagram | [`architecture.png`](architecture.png) (source [`architecture.mmd`](architecture.mmd)) |
 | CI | [GitHub Actions](https://github.com/shahriar-rashid-13/carebridge-clinic-flow/actions/workflows/ci.yml): type check, 464 unit and Edge Function tests, build, Playwright E2E on every push to `main` |
 
 ## Submission checklist
@@ -30,7 +30,7 @@ Kaggle no-show dataset, used offline for model evaluation and never loaded into 
 
 ## 1. Architecture
 
-![CareBridge architecture](docs/architecture.png)
+![CareBridge architecture](architecture.png)
 
 - **Browser:** the React app talks only to Supabase (Auth, Postgres with Row Level Security, Edge
   Functions). It never calls a model.
@@ -136,7 +136,7 @@ models; the judge is Gemini 3.5 Flash (`carebridge-judge`), a different model fr
 
 ### 5.1 Agent task success (v2 vs v3)
 
-Full report: [`eval/AGENT_EVAL_REPORT.md`](eval/AGENT_EVAL_REPORT.md); scenarios in
+Full report: [`eval/AGENT_EVAL_REPORT.md`](../../eval/AGENT_EVAL_REPORT.md); scenarios in
 `eval/agent-scenarios.json`; raw results in `eval/results/`.
 
 42 labelled scenarios in 10 categories (scheduling, triage, billing, records, policy, multi-intent,
@@ -281,7 +281,7 @@ CLI.
 
 **Security.**
 
-- Supabase advisor pass (`docs/supabase-advisors.md`): security findings 27 to 18 and performance
+- Supabase advisor pass ([`supabase-advisors.md`](supabase-advisors.md)): security findings 27 to 18 and performance
   33 to 20 on 5 October. Fixed mutable `search_path`, revoked anonymous `EXECUTE` on SECURITY
   DEFINER functions, rewrote 11 policies to `(select auth.uid())`, dropped duplicate indexes and
   indexed foreign keys. The remaining security findings are the app's own RPCs, each of which

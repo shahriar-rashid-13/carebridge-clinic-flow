@@ -1,4 +1,4 @@
--- Fixes for the Supabase security and performance advisors (see docs/supabase-advisors.md).
+-- Fixes for the Supabase security and performance advisors (see docs/assessment-3/supabase-advisors.md).
 -- Behaviour for signed-in users is unchanged; only anonymous access, per-row re-evaluation,
 -- duplicate indexes, and missing foreign key indexes change.
 
