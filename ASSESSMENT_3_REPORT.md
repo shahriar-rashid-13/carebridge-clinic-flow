@@ -261,8 +261,10 @@ an extra reminder. The LoRA fine-tune stretch was not attempted.
 
 **CI/CD.** GitHub Actions on every push and pull request: type check, 464 Vitest unit and Edge
 Function tests, production build, then 8 Playwright end-to-end tests against the live database on
-pushes to `main`. The gateway repository validates its config and checks that no key is written in
-it. Vercel deploys the frontend and the gateway on push; Edge Functions deploy with the Supabase
+pushes to `main`. Latest green run before the release:
+[run 37754542411](https://github.com/shahriar-rashid-13/carebridge-clinic-flow/actions/runs/37754542411)
+on commit `9acdba3`. The gateway repository validates its config and checks that no key is written
+in it. Vercel deploys the frontend and the gateway on push; Edge Functions deploy with the Supabase
 CLI.
 
 **Observability.**
@@ -326,3 +328,9 @@ lists these demo users and fills in the email with one click.
 - Emails to synthetic patients go to the sandbox inbox (Resend free tier without a verified domain).
 - The no-show model is trained on Brazilian data from 2016 and should be retrained on CareBridge
   appointments before real use.
+- The supervisor sometimes routes a two-part question to one specialist only (for example "fee
+  and free slots" to billing). The specialist then says the other part belongs elsewhere instead
+  of answering it.
+- The production re-rank waits 6 s; on a busy free tier it falls back to the fused order more
+  often than in the evaluation (4 of 85 queries with 20 s).
+- gte-small is weaker than Gemini embeddings on very short and noisy questions (section 5.2).
