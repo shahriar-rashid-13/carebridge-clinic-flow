@@ -1,44 +1,83 @@
+---
+config:
+  theme: base
+  themeVariables:
+    fontFamily: "Segoe UI, Arial, sans-serif"
+    fontSize: "15px"
+    clusterBkg: "#f8fafc"
+    clusterBorder: "#94a3b8"
+    edgeLabelBackground: "#ffffff"
+  flowchart:
+    nodeSpacing: 30
+    rankSpacing: 44
+    curve: basis
+---
 flowchart TB
-  U["Patient, doctor, receptionist"] --> FE["React app on Vercel<br/>/ai chat, /campaigns, /metrics"]
-
-  FE -- "sign-in, data (JWT + RLS)" --> DB
-  FE -- "chat message" --> AI
+  U(["Patient · Doctor · Receptionist"]):::user
+  FE["React + TanStack app — Vercel<br/>/ai chat · /campaigns · /metrics"]:::fe
+  SEN["Sentry<br/>browser + edge errors, scrubbed"]:::obs
 
   subgraph SB["Supabase"]
     direction TB
-    subgraph AI["Edge Function carebridge-ai-v3 (v2 kept as A2 baseline)"]
+    subgraph AI["Edge Function carebridge-ai-v3  (v2 kept as A2 baseline)"]
       direction LR
-      EM["1. Emergency gate"] --> GR["2. Guardrails<br/>injection, PII,<br/>schema, confidence"] --> SUP["3. Supervisor<br/>route + up to 2 handoffs"] --> AG["4. Specialists<br/>triage, scheduling,<br/>billing, records"]
-      AG --> KN["Knowledge tools<br/>get_policy: 15 OKF files<br/>search_knowledge: 20 to 5 re-rank"]
+      EM["1 · Emergency gate<br/>approved text, no model"]:::ai
+      GR["2 · Guardrails<br/>injection · PII redaction<br/>length · confidence"]:::ai
+      SUP["3 · Supervisor<br/>JSON route · ≤ 2 handoffs"]:::ai
+      AG["4 · Specialists<br/>triage · scheduling<br/>billing · records"]:::ai
+      KN["5 · Knowledge tools<br/>get_policy: 15 OKF files<br/>search_knowledge: 20 → 5 re-rank"]:::ai
+      EM --> GR --> SUP --> AG --> KN
     end
-    DB[("Postgres 17 + RLS<br/>clinic tables, AI memory, proposals<br/>rag_documents: 20,758 rows, gte-small")]
-    subgraph JOBS["Integrations (pg_cron + Edge Functions)"]
-      direction LR
-      DIS["message-dispatcher<br/>reminders, campaigns"]
-      WH["resend-webhook<br/>delivery status"]
-      CAL["calendar-sync"]
-    end
+    DB[("Postgres 17 + RLS + pgvector<br/>clinic tables · AI memory · proposals<br/>rag_documents 20,758 rows · gte-small")]:::db
+    DIS["message-dispatcher (pg_cron)<br/>reminders · campaigns<br/>retries · quiet hours · opt-outs"]:::job
+    CAL["calendar-sync (pg_cron)<br/>one event per appointment"]:::job
+    WH["resend-webhook<br/>verifies signed delivery events"]:::job
+    AI == "tools + hybrid search<br/>run with caller's JWT" ==> DB
+    DB -- "outbox queue" --> DIS
+    DB -- "calendar queue" --> CAL
   end
 
-  AG -- "tools run with the user's JWT" --> DB
-  KN -- "hybrid search" --> DB
-  DB -- "outbox and calendar queues" --> JOBS
+  subgraph MOD["Models — all keys stay server-side"]
+    direction TB
+    GW["LiteLLM gateway — Vercel<br/>Gemini key 1 → key 2 → OpenRouter<br/>+ embeddings · judge"]:::gw
+    GEM["Gemini<br/>2 free-tier projects"]:::ext
+    OR["OpenRouter<br/>free models"]:::ext
+    GW --> GEM
+    GW --> OR
+  end
 
-  AI -- "model calls" --> GW["LiteLLM gateway on Vercel<br/>Gemini key 1, Gemini key 2,<br/>OpenRouter fallbacks, judge"]
-  GW --> GEM["Gemini (2 projects)"]
-  GW --> OR["OpenRouter free models"]
+  RES["Resend email"]:::ext
+  GCAL["Google Calendar"]:::ext
 
-  DIS --> RES["Resend email"]
-  RES -- "signed events" --> WH
-  CAL --> GCAL["Google Calendar"]
-  FE -. "errors" .-> SEN["Sentry"]
-  AI -. "errors" .-> SEN
-
-  subgraph OFF["Offline, local"]
+  subgraph OFF["Offline · local"]
     direction LR
-    CORP["carebridge-rag<br/>corpus, embeddings,<br/>search evaluation"]
-    EVAL["Agent evaluation<br/>42 scenarios, v2 vs v3"]
-    NS["No-show model<br/>Kaggle dataset"]
+    CORP["carebridge-rag<br/>corpus · embeddings<br/>search evaluation"]:::off
+    EVAL["Agent evaluation<br/>42 scenarios · v2 vs v3"]:::off
+    NS["No-show model<br/>Kaggle data, offline only"]:::off
   end
+
+  U ==> FE
+  FE == "sign-in + data<br/>JWT + RLS" ==> SB
+  FE == "chat" ==> AI
+  AI == "model calls" ==> GW
+  DIS --> RES
+  RES -. "signed events" .-> WH
+  CAL --> GCAL
+  FE -. "errors" .-> SEN
   CORP -- "upload" --> DB
   EVAL -- "test users" --> AI
+
+  classDef user fill:#1e293b,stroke:#0f172a,color:#ffffff,stroke-width:1.5px
+  classDef fe fill:#2563eb,stroke:#1e40af,color:#ffffff,stroke-width:1.5px
+  classDef ai fill:#ede9fe,stroke:#7c3aed,color:#312e81,stroke-width:1.5px
+  classDef db fill:#065f46,stroke:#064e3b,color:#ffffff,stroke-width:1.5px
+  classDef job fill:#ffedd5,stroke:#ea580c,color:#7c2d12,stroke-width:1.5px
+  classDef gw fill:#fef08a,stroke:#ca8a04,color:#713f12,stroke-width:1.5px
+  classDef ext fill:#e2e8f0,stroke:#64748b,color:#1e293b,stroke-width:1.5px
+  classDef obs fill:#fee2e2,stroke:#dc2626,color:#7f1d1d,stroke-width:1.5px
+  classDef off fill:#cffafe,stroke:#0891b2,color:#164e63,stroke-width:1.5px
+
+  style SB fill:#ecfdf5,stroke:#10b981,stroke-width:2px
+  style AI fill:#faf5ff,stroke:#8b5cf6,stroke-width:1.5px
+  style MOD fill:#fefce8,stroke:#eab308,stroke-width:1.5px
+  style OFF fill:#f0f9ff,stroke:#38bdf8,stroke-width:1.5px
