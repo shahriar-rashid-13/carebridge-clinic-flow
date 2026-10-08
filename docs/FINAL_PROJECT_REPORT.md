@@ -43,8 +43,7 @@ CareBridge is a role-based clinic operations system for patients, doctors, and r
 22. [Repository maps](#22-repository-maps)
 23. [Local development and reproduction](#23-local-development-and-reproduction)
 24. [Design decisions](#24-design-decisions)
-25. [Known limitations and future work](#25-known-limitations-and-future-work)
-26. [Reviewer handoff links and demo accounts](#26-reviewer-handoff-links-and-demo-accounts)
+25. [Reviewer handoff links and demo accounts](#25-reviewer-handoff-links-and-demo-accounts)
 
 ## 1. Executive summary
 
@@ -682,35 +681,7 @@ node tests\test_second_key.mjs
 | Time-based no-show split and earlier-day history | Better matches deployment and avoids same-day/future outcome leakage |
 | Run live E2E only on `main` pushes | Protects pull requests and serializes database mutation; reduces PR-stage browser feedback |
 
-## 25. Known limitations and future work
-
-### Known limitations
-
-- Free/quota-constrained Gemini and OpenRouter endpoints can exhaust quota, change latency, or be unavailable. Fallbacks reduce but do not eliminate outages.
-- V3 saves tokens and improves consistency but is about two seconds slower because it adds supervisor routing and may rerank retrieval.
-- Multi-intent routing remains imperfect; a supervisor can omit a needed handoff.
-- Production reranking uses a six-second budget and may fall back more often than the 20-second evaluation.
-- gte-small trails Gemini on short edge and noisy questions; one corpus row is truncated at 512 tokens.
-- PII and dose detection are regex-based defenses, not comprehensive data-loss prevention.
-- Resend sandbox mode redirects synthetic recipients until a domain is verified.
-- The no-show model uses six weeks of 2016 Brazilian data, has modest precision, and is not deployed.
-- Classification headline metrics remain tied to the stale 2,580-note A2 snapshot.
-- LLM-as-judge scores can be biased even though a different model group is used.
-- Migrations assume the pre-existing Assessment 1 schema; a clean full-schema bootstrap is absent.
-- Gateway Vercel route/build/duration settings are external project configuration, not reproducible from the repository alone.
-
-### Recommended future work
-
-1. Add a reviewed full bootstrap migration and automated RLS regression tests against a disposable Supabase instance.
-2. Improve supervisor multi-intent training/examples and add deterministic intent coverage checks.
-3. Verify a sending domain, remove sandbox redirection, and add integration dashboards/alerts for queue age and permanent failures.
-4. Re-evaluate classification on the 11,028-note corpus with a frozen split and versioned report.
-5. Collect locally representative appointment outcomes, recalibrate the no-show model, add fairness checks, and keep any intervention non-punitive.
-6. Benchmark stronger small embeddings or query rewriting while retaining local/Edge feasibility.
-7. Add strict provider-backed gateway tests in a protected scheduled workflow with quota-aware controls.
-8. Add disaster-recovery documentation, secret rotation procedures, and queue replay runbooks.
-
-## 26. Reviewer handoff links and demo accounts
+## 25. Reviewer handoff links and demo accounts
 
 ### Primary documents
 
