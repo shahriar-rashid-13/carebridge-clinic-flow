@@ -20,7 +20,10 @@ import {
   parseOkf,
 } from "../../supabase/functions/carebridge-ai-v3/okf.ts";
 import { OKF_SOURCES } from "../../supabase/functions/carebridge-ai-v3/knowledge.gen.ts";
-import { learnFromArgs } from "../../supabase/functions/carebridge-ai-v3/run-agent.ts";
+import {
+  learnFromArgs,
+  learnFromResult,
+} from "../../supabase/functions/carebridge-ai-v3/run-agent.ts";
 import { keywordRoute } from "../../supabase/functions/carebridge-ai-v3/supervisor.ts";
 import { createGetPolicy } from "../../supabase/functions/carebridge-ai-v3/tools-policy.ts";
 import { edgeClinic } from "../helpers/edge";
@@ -230,6 +233,43 @@ describe("agents", () => {
       }),
     ).toEqual({ doctor_id: "d", date: "2026-10-09", specialization: "Cardiology" });
   });
+
+  it("keeps upcoming active appointments from a tool result, soonest first", () => {
+    const row = (id: string, date: string, time_slot: string, status = "confirmed") => ({
+      appointment_id: `00000000-0000-4000-8000-00000000000${id}`,
+      date,
+      time_slot,
+      status,
+      doctor_name: "Dr. A",
+    });
+    const content = JSON.stringify({
+      ok: true,
+      appointments: [
+        row("1", "2026-10-20", "10:00"),
+        row("2", "2026-10-13", "14:00", "requested"),
+        row("3", "2026-10-01", "09:00"),
+        row("4", "2026-10-15", "09:00", "cancelled"),
+      ],
+    });
+    expect(learnFromResult(content, "2026-10-08")).toEqual({
+      appointments: [
+        {
+          appointment_id: "00000000-0000-4000-8000-000000000002",
+          date: "2026-10-13",
+          time_slot: "14:00",
+          doctor_name: "Dr. A",
+        },
+        {
+          appointment_id: "00000000-0000-4000-8000-000000000001",
+          date: "2026-10-20",
+          time_slot: "10:00",
+          doctor_name: "Dr. A",
+        },
+      ],
+    });
+    expect(learnFromResult(JSON.stringify({ ok: true, doctors: [] }), "2026-10-08")).toEqual({});
+    expect(learnFromResult("not json", "2026-10-08")).toEqual({});
+  });
 });
 
 describe("keyword router", () => {
@@ -324,5 +364,15 @@ describe("mergeAgentTexts", () => {
     ]);
     expect(merged).toContain("Dermatologist");
     expect(merged).toContain("Tahmina Begum");
+  });
+
+  it("does not split sentences after Dr. or leave title fragments", () => {
+    const merged = mergeAgentTexts([
+      "Dr. Shamima Nasrin's consultation fee is 800. Her free slots on Saturday are 09:00 AM and 09:30 AM.",
+      "Dr. Shamima Nasrin has free slots on Saturday at 09:00 AM and 09:30 AM.",
+    ]);
+    expect(merged).toBe(
+      "Dr. Shamima Nasrin's consultation fee is 800. Her free slots on Saturday are 09:00 AM and 09:30 AM.",
+    );
   });
 });

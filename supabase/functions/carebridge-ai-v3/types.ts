@@ -35,11 +35,20 @@ export type OkfDoc = {
   body: string;
 };
 
+export type KnownAppointment = {
+  appointment_id: string;
+  date: string;
+  time_slot: string;
+  doctor_name: string;
+};
+
 /**
  * Shared memory kept per conversation in public.ai_conversation_state.
  * Every field is optional; agents read all of it and write only what they learned.
  */
 export type ConversationState = {
+  /** Upcoming appointments a tool listed in this conversation, so a later turn can act on one. */
+  appointments?: KnownAppointment[];
   specialization?: string;
   doctor_id?: string;
   doctor_name?: string;

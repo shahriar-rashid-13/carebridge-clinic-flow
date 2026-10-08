@@ -8,11 +8,12 @@ import {
 import type { ToolContext, ToolDefinition } from "../carebridge-ai-v2/shared.ts";
 import { executeToolCall, toolSchemas, type ToolTrace } from "../carebridge-ai-v2/tools.ts";
 import { redactInto, restorePiiInArgs, type PiiMap } from "./guardrails.ts";
-import type { AgentName, ConversationState } from "./types.ts";
+import { MAX_KNOWN_APPOINTMENTS } from "./state.ts";
+import type { AgentName, ConversationState, KnownAppointment } from "./types.ts";
 
 const GATEWAY_TIMEOUT_MS = 55_000;
 const MIN_CALL_BUDGET_MS = 5_000;
-const MAX_TOOL_ROUNDS = 4;
+const MAX_TOOL_ROUNDS = 5;
 const MAX_TOOL_CALLS_PER_ROUND = 6;
 
 export type AgentRun = {
@@ -41,6 +42,38 @@ export function learnFromArgs(args: Record<string, unknown>): Partial<Conversati
   if (specialization) learned.specialization = specialization;
   if (patientId) learned.patient_id = patientId;
   return learned;
+}
+
+const ACTIVE_STATUSES = new Set(["requested", "confirmed"]);
+
+/** Keeps the upcoming appointments from a tool result that lists appointments. */
+export function learnFromResult(content: string, today: string): Partial<ConversationState> {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(content);
+  } catch {
+    return {};
+  }
+  const rows = (parsed as { appointments?: unknown })?.appointments;
+  if (!Array.isArray(rows)) return {};
+  const appointments: KnownAppointment[] = rows
+    .filter(
+      (row) =>
+        row &&
+        typeof row.appointment_id === "string" &&
+        typeof row.date === "string" &&
+        row.date >= today &&
+        ACTIVE_STATUSES.has(row.status),
+    )
+    .sort((a, b) => `${a.date} ${a.time_slot}`.localeCompare(`${b.date} ${b.time_slot}`))
+    .slice(0, MAX_KNOWN_APPOINTMENTS)
+    .map((row) => ({
+      appointment_id: row.appointment_id,
+      date: row.date,
+      time_slot: String(row.time_slot ?? ""),
+      doctor_name: String(row.doctor_name ?? ""),
+    }));
+  return appointments.length ? { appointments } : {};
 }
 
 function prepareCall(call: ToolCall, pii: PiiMap, learned: Partial<ConversationState>): ToolCall {
@@ -131,6 +164,7 @@ export async function runAgent(options: {
         requestId,
       );
       run.tools.push({ ...trace, agent });
+      if (trace.ok) Object.assign(run.learned, learnFromResult(content, ctx.today));
       conversation.push({ role: "tool", tool_call_id: call.id, content: redactInto(content, pii) });
     }
   }

@@ -1,19 +1,44 @@
 import type { SupabaseClient } from "npm:@supabase/supabase-js@2";
 import { isIsoDate, isUuid } from "../carebridge-ai-v2/shared.ts";
-import { AGENTS, type AgentName, type ConversationState } from "./types.ts";
+import { AGENTS, type AgentName, type ConversationState, type KnownAppointment } from "./types.ts";
 
 export const STATE_TTL_HOURS = 24;
 
 const MAX_TEXT = 120;
 const MAX_PENDING_INTENTS = 3;
+export const MAX_KNOWN_APPOINTMENTS = 5;
 const TEXT_KEYS = ["specialization", "doctor_name", "patient_name"] as const;
-const NEW_PATIENT_CLEARS = ["doctor_id", "doctor_name", "date", "patient_name"] as const;
+const NEW_PATIENT_CLEARS = [
+  "doctor_id",
+  "doctor_name",
+  "date",
+  "patient_name",
+  "appointments",
+] as const;
 
 const isAgent = (value: unknown): value is AgentName =>
   typeof value === "string" && AGENTS.includes(value as AgentName);
 
 const cleanText = (value: unknown) =>
   typeof value === "string" ? value.replace(/\s+/g, " ").trim().slice(0, MAX_TEXT).trim() : "";
+
+function sanitizeAppointments(raw: unknown): KnownAppointment[] {
+  if (!Array.isArray(raw)) return [];
+  const list: KnownAppointment[] = [];
+  for (const item of raw) {
+    if (!item || typeof item !== "object") continue;
+    const entry = item as Record<string, unknown>;
+    if (!isUuid(entry.appointment_id) || !isIsoDate(entry.date)) continue;
+    list.push({
+      appointment_id: entry.appointment_id,
+      date: entry.date,
+      time_slot: cleanText(entry.time_slot),
+      doctor_name: cleanText(entry.doctor_name),
+    });
+    if (list.length === MAX_KNOWN_APPOINTMENTS) break;
+  }
+  return list;
+}
 
 export function emptyState(): ConversationState {
   return {};
@@ -39,6 +64,8 @@ export function sanitizeState(raw: unknown): ConversationState {
     );
     if (intents.length) state.pending_intents = intents;
   }
+  const appointments = sanitizeAppointments(input.appointments);
+  if (appointments.length) state.appointments = appointments;
   return state;
 }
 

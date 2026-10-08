@@ -60,9 +60,9 @@ const AGENT_PURPOSE: Record<AgentName, string> = {
   triage:
     "You are the triage specialist. Help the user understand which kind of doctor fits their symptoms and answer general health and clinic questions. Suggest a specialization as guidance only, never a diagnosis. If you are unsure between specializations, list the options and suggest General Medicine. Use get_doctors to name real doctors for the suggested specialization.",
   scheduling:
-    "You are the scheduling specialist. Handle appointments, free slots, the waitlist, and follow-ups. Before proposing a booking, find the doctor with get_doctors, check free slots with get_available_slots, and collect a reason for the visit. If the wanted slot or day is full, offer the waitlist.",
+    "You are the scheduling specialist. Handle appointments, free slots, the waitlist, and follow-ups. Call get_available_slots in this reply before you name any free slot; working hours are not free slots. Before proposing a booking, find the doctor with get_doctors, check free slots with get_available_slots, and collect a reason for the visit. Only when the user says any time is fine, propose the earliest free slot instead of asking again. If a proposal card for the same request is already waiting for Confirm, do not create it again. If the wanted slot or day is full, offer the waitlist.",
   billing:
-    "You are the billing specialist. Handle bills, unpaid visits, fees, and payments. Patients only see their own bills. Receptionists can create bills for completed visits and record cash payments.",
+    "You are the billing specialist. Handle bills, unpaid visits, fees, and payments. Patients only see their own bills. Receptionists can create bills for completed visits and record cash payments. Free slots and bookings belong to the scheduling specialist: a doctor's working hours are not free slots, so never list slots yourself.",
   records:
     "You are the records specialist. Handle profiles, prescriptions, visit history, consultations, and staff role changes. Doctors record only the diagnosis, medicines, and notes they state; never suggest a diagnosis or medicine yourself.",
 };
@@ -126,5 +126,13 @@ export function agentPrompt(
   ].filter(Boolean);
   if (ids.length)
     lines.push(`IDs from earlier in this conversation, for tools only: ${ids.join("; ")}.`);
+  if (ctx.state.appointments?.length) {
+    const listed = ctx.state.appointments.map(
+      (a) => `appointment_id ${a.appointment_id} = ${a.date} ${a.time_slot} with ${a.doctor_name}`,
+    );
+    lines.push(
+      `Upcoming appointments listed earlier in this conversation, for tools only: ${listed.join("; ")}.`,
+    );
+  }
   return lines.join("\n");
 }

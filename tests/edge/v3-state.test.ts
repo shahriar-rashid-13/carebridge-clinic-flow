@@ -100,6 +100,24 @@ describe("sanitizeState", () => {
     expect(state.pending_intents).toEqual(["billing", "records", "triage"]);
   });
 
+  it("keeps at most five valid known appointments", () => {
+    const valid = {
+      appointment_id: DOCTOR,
+      date: "2026-10-13",
+      time_slot: "14:00",
+      doctor_name: "Dr. A",
+    };
+    const state = sanitizeState({
+      appointments: [
+        { ...valid, appointment_id: "123" },
+        { ...valid, date: "soon" },
+        "x",
+        ...Array.from({ length: 6 }, () => valid),
+      ],
+    });
+    expect(state.appointments).toEqual(Array.from({ length: 5 }, () => valid));
+  });
+
   it("returns an empty state for non-objects", () => {
     expect(sanitizeState(null)).toEqual({});
     expect(sanitizeState("state")).toEqual({});
@@ -124,7 +142,7 @@ describe("mergeState", () => {
     });
   });
 
-  it("clears doctor and date when the patient changes", () => {
+  it("clears doctor, date and appointments when the patient changes", () => {
     const previous = {
       specialization: "Cardiology",
       doctor_id: DOCTOR,
@@ -132,6 +150,9 @@ describe("mergeState", () => {
       date: "2026-10-09",
       patient_id: PATIENT_A,
       patient_name: "Sarah",
+      appointments: [
+        { appointment_id: DOCTOR, date: "2026-10-13", time_slot: "14:00", doctor_name: "Dr. A" },
+      ],
     };
     expect(mergeState(previous, { patient_id: PATIENT_B, patient_name: "Omar" })).toEqual({
       specialization: "Cardiology",

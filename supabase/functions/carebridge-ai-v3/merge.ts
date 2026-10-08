@@ -6,11 +6,12 @@ const CANNOT_HELP =
 const MIN_SENTENCE_WORDS = 6;
 const REPEAT_SHARE = 0.75;
 const MIN_LEFTOVER_WORDS = 10;
+const MIN_FRAGMENT_WORDS = 3;
 
 const words = (text: string) => text.toLowerCase().match(/[a-z0-9]+/g) ?? [];
 
 function splitSentences(line: string): string[] {
-  return line.split(/(?<=[.!?])\s+(?=[A-Z*[(])/);
+  return line.split(/(?<!\b(?:Dr|Mr|Mrs|Ms|Prof)\.)(?<=[.!?])\s+(?=[A-Z*[(])/);
 }
 
 /** True when most words of the sentence already appear in the earlier text. */
@@ -26,10 +27,11 @@ function dropRepeats(text: string, seen: Set<string>): string {
     const kept = splitSentences(line).filter((sentence) => !isRepeat(sentence, seen));
     return kept.join(" ");
   });
-  return lines
+  const rest = lines
     .join("\n")
     .replace(/\n{3,}/g, "\n\n")
     .trim();
+  return words(rest).length < MIN_FRAGMENT_WORDS ? "" : rest;
 }
 
 /** Removes "cannot look that up" sentences; a reply with little else left becomes empty. */
