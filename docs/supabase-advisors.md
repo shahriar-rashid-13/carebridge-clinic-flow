@@ -71,6 +71,20 @@ The internal helpers `campaign_audience`, `email_quota_left` and `require_recept
 
 Security: 24 findings, unchanged. `enqueue_calendar_job`, `on_appointment_calendar_change` and `claim_calendar_jobs` are revoked from `anon` and `authenticated` (`claim_calendar_jobs` is granted to `service_role` only). `calendar_jobs` has RLS on with a receptionist-only read policy.
 
+## Day 3 and 4 additions (multi-agent memory and AI metrics)
+
+Security: 24 findings to 25, all expected.
+
+| Lint | Count | Why |
+|---|---|---|
+| authenticated_security_definer_function_executable | +1 | `ai_metrics` feeds the `/metrics` page. It checks for the receptionist role first and raises `42501` for any other role. |
+
+`ai_conversation_state` (v3 shared memory) has RLS on with owner-only policies that use `(select auth.uid())`, so it adds no finding.
+
+Performance: a new `duplicate_index` WARN appeared because `20261006010000_recall_segments.sql` added `appointments_patient_date`, which has the same columns as the base schema index `idx_appointments_patient_date`. Migration `20261008000000_drop_duplicate_appointment_index.sql` drops the new one.
+
+Current totals (8 Oct 2026, after that migration): security 25 (23 `authenticated_security_definer_function_executable`, 1 `rls_enabled_no_policy`, 1 `auth_leaked_password_protection`); performance 21 (14 `unused_index` INFO, 7 `multiple_permissive_policies` WARN, with the same reasons as above).
+
 ## Accepted finding: leaked password protection
 
 `auth_leaked_password_protection` stays open. Checking passwords against HaveIBeenPwned is only available on the Supabase Pro plan, and this demo project runs on the free plan with synthetic patient data only. On a paid production project this setting should be turned on.

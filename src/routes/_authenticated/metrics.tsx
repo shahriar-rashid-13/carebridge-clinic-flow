@@ -31,6 +31,12 @@ import {
   versionMetrics,
   type AiMetrics,
 } from "@/lib/clinic/metrics";
+import {
+  AGENT_EVAL_ROWS,
+  EVAL_RUN_DATE,
+  SEARCH_EVAL_ROWS,
+  type EvalRow,
+} from "@/lib/clinic/eval-scores";
 import { useClinic } from "@/lib/clinic/store";
 
 export const Route = createFileRoute("/_authenticated/metrics")({
@@ -214,18 +220,57 @@ function MetricsPage() {
             </Panel>
           </div>
 
-          <Panel
-            title="Evaluation scores"
-            description="Offline scenario and search evaluation results."
-          >
-            <p className="text-sm text-[#5f6b66]">
-              Scores from the agent scenario set and the FAQ search evaluation will be shown here
-              once those runs are complete.
-            </p>
-          </Panel>
+          <div className="grid gap-6 lg:grid-cols-2">
+            <Panel
+              title="Agent evaluation"
+              description={`Labelled scenarios run against both versions with test accounts (${EVAL_RUN_DATE}).`}
+            >
+              <EvalTable rows={AGENT_EVAL_ROWS} baseline="v2" current="v3" />
+            </Panel>
+            <Panel
+              title="Search evaluation"
+              description={`Assessment 2 search compared with the v3 search (${EVAL_RUN_DATE}).`}
+            >
+              <EvalTable rows={SEARCH_EVAL_ROWS} baseline="A2" current="v3" />
+            </Panel>
+          </div>
         </>
       )}
     </div>
+  );
+}
+
+function EvalTable({
+  rows,
+  baseline,
+  current,
+}: {
+  rows: EvalRow[];
+  baseline: string;
+  current: string;
+}) {
+  return (
+    <Table>
+      <TableHeader>
+        <TableRow>
+          <TableHead>Metric</TableHead>
+          <TableHead className="text-right">{baseline}</TableHead>
+          <TableHead className="text-right">{current}</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {rows.map((row) => (
+          <TableRow key={row.label}>
+            <TableCell>
+              <p className="font-medium text-[#172a25]">{row.label}</p>
+              <p className="text-xs text-[#5f6b66]">{row.hint}</p>
+            </TableCell>
+            <TableCell className="text-right tabular-nums">{row.baseline}</TableCell>
+            <TableCell className="text-right tabular-nums">{row.current}</TableCell>
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
   );
 }
 

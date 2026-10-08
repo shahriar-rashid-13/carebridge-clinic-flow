@@ -63,9 +63,37 @@ The fixed failures from run 1 all pass in the re-run (booking, fee, no-dose, rep
    Fix: skip list lines in the repeat check.
 4. Not yet fixed in v2 (baseline, by choice): requested appointments, doses from records.
 
-## Next steps (8 October)
+## Fixes in `35d8cb9` (8 October)
 
-1. Fix open issues 1 to 3, run the tests, deploy v3.
-2. Re-run the two unsaved scenarios, then full runs so v2 and v3 each have 3 runs (mean and pass@3).
-3. Write `eval/AGENT_EVAL_REPORT.md` and fill the eval panel on `/metrics`.
-4. Item 6 (search evaluation) with the agreed cuts: clean index re-rank only, 30 judged answers.
+- Issue 1: `mergeAgentTexts` normalises curly apostrophes and removes only the "cannot look up"
+  sentences; a reply is dropped only when fewer than 10 words are left.
+- Issue 2: the keyword patterns now cover patient search, contact details, phone numbers and
+  unbilled or outstanding visits. `search_patients` is a shared read-only tool.
+- The real cause of the keyword routes in the re-run was a supervisor timeout (12 s), not a rate
+  limit. The supervisor now waits 25 s, which covers the Gemini call and the second-key retry
+  (`SECOND_GEMINI_API_KEY`, added to the gateway on 8 October).
+- Issue 3: the scorer skips list lines in the repeat check.
+
+Rescored with the new checks, the v3 re-run passes 37 of 40 saved scenarios.
+
+## Final runs (8 October)
+
+Full runs `2026-10-08-r2` and `2026-10-08-r3` (v2 and v3) and `2026-10-08-v3a` (v3 only), so each
+version has 3 runs. `node scripts/agent-eval-report.mjs` rescores all runs with the current
+checks and writes `eval/AGENT_EVAL_REPORT.md` and `eval/agent-eval-summary.json`.
+
+Result: v3 96.0% mean task success (pass^3 95.1%), v2 92.8% (pass^3 85.4%).
+
+## Fixes after the final runs (8 October, not in the report table)
+
+- `sched-reschedule-next`: in turn 2 the specialist no longer had the appointment id, proposed with
+  a wrong id ("Appointment not found") and ran out of tool rounds; v3 then returned an empty reply
+  (HTTP 502) or "could not prepare". v3 now keeps upcoming appointments from tool results in
+  `ai_conversation_state` (`appointments`, at most 5), allows 5 tool rounds, and proposes the
+  earliest free slot when the user says any time is fine.
+- `multi-fee-and-slots`: billing listed slots from working hours, and the merge split at "Dr." and
+  left "Dr." as the second reply. Billing now leaves slots to scheduling, scheduling must call
+  `get_available_slots` before naming a slot, and the merge does not split after titles.
+- Post-fix checks: runs `2026-10-08-postfix*` (v3 only). Final build: 12 of 13 scheduling, billing
+  and multi-intent scenarios passed (`2026-10-08-postfix-regress2`); the failure was the supervisor
+  routing "fee and free slots" to billing only.
