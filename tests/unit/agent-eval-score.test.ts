@@ -149,6 +149,15 @@ describe("scoreScenario", () => {
     ).toEqual(["single_proposal"]);
   });
 
+  it("does not count similar list items as repeats", () => {
+    const text = [
+      "Your schedule for today:",
+      "- 09:00 AM with Rahim Uddin, status cancelled by the patient this morning",
+      "- 10:00 AM with Karim Uddin, status cancelled by the patient this morning",
+    ].join("\n");
+    expect(scoreScenario(scenario({}), "v3", [turn({ text })]).pass).toBe(true);
+  });
+
   it("allows a dose the doctor stated when allow_dose is set", () => {
     const t = turn({ text: "Proposal ready: Paracetamol 500 mg three times daily." });
     expect(scoreScenario(scenario({ allow_dose: true }), "v2", [t]).pass).toBe(true);

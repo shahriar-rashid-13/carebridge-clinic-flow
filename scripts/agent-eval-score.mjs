@@ -52,9 +52,14 @@ const REPEAT_SHARE = 0.8;
 const words = (text) => text.toLowerCase().match(/[a-z0-9]+/g) ?? [];
 
 /** Sentences of the reply that mostly restate another sentence of the same reply. */
+// List items and table rows share their layout words, so they are not checked for repeats.
+const LIST_LINE = /^\s*(?:[-*•|]|\d+[.)])/;
+
 export function repeatedSentences(text) {
   const sentences = text
-    .split(/\n+|(?<=[.!?])\s+/)
+    .split(/\n+/)
+    .filter((line) => !LIST_LINE.test(line))
+    .flatMap((line) => line.split(/(?<=[.!?])\s+/))
     .map((sentence) => sentence.trim())
     .filter((sentence) => words(sentence).length >= MIN_REPEAT_WORDS);
   const repeats = [];

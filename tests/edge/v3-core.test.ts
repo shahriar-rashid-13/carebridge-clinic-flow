@@ -245,6 +245,20 @@ describe("keyword router", () => {
     });
   });
 
+  it("routes patient lookups to records and unbilled visits to billing", () => {
+    expect(
+      keywordRoute("Find the patient Sarah Jenkins and show her contact details", [...all], DOCS)
+        .agent,
+    ).toBe("records");
+    expect(
+      keywordRoute(
+        "How many completed visits are still unbilled, and are there open no-show follow-ups?",
+        [...all],
+        DOCS,
+      ),
+    ).toMatchObject({ agent: "billing", handoffs: ["scheduling"] });
+  });
+
   it("sends known policy questions to OKF", () => {
     expect(keywordRoute("Is there a cancellation fee?", [...all], DOCS)).toMatchObject({
       agent: "scheduling",
@@ -291,6 +305,16 @@ describe("mergeAgentTexts", () => {
     expect(merged).toBe(
       "You do not have any unpaid bills.\n\nOur opening hours on Saturday are 9:00 AM to 5:00 PM.",
     );
+  });
+
+  it("removes a cannot-look-up sentence but keeps the rest of that reply", () => {
+    const merged = mergeAgentTexts([
+      "You have one requested appointment with Dr. Arif Hossain on 13 October at 02:00 PM. Prescriptions are managed by the records specialist; I don’t have access to them here.",
+      "You have two prescriptions: Napa and Seroxin, both from your last visit.",
+    ]);
+    expect(merged).toContain("Arif Hossain");
+    expect(merged).toContain("Napa and Seroxin");
+    expect(merged).not.toContain("have access");
   });
 
   it("keeps refusals that are not about looking something up", () => {

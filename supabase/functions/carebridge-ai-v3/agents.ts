@@ -3,8 +3,11 @@ import { describeState } from "./state.ts";
 import type { AgentContext, AgentName, OkfDoc } from "./types.ts";
 import { okfCitation } from "./okf.ts";
 
-/** Read-only lookups every specialist may need, for example a doctor's fee or the caller's profile. */
-export const SHARED_READ_TOOLS = ["get_policy", "get_doctors", "get_my_profile"];
+/**
+ * Read-only lookups every specialist may need, for example a doctor's fee or a patient's contact
+ * details. The v2 role filter still hides staff-only tools such as search_patients from patients.
+ */
+export const SHARED_READ_TOOLS = ["get_policy", "get_doctors", "get_my_profile", "search_patients"];
 
 /**
  * Tool names each specialist may use. Tools that change data (propose_*) belong to exactly one
@@ -19,7 +22,6 @@ export const AGENT_TOOLS: Record<AgentName, string[]> = {
     "get_my_waitlist",
     "get_my_schedule",
     "get_appointments",
-    "search_patients",
     "get_followups",
     "propose_booking",
     "propose_cancel_my_appointment",
@@ -37,7 +39,6 @@ export const AGENT_TOOLS: Record<AgentName, string[]> = {
     "get_my_bills",
     "get_bills",
     "get_unbilled_visits",
-    "search_patients",
     "propose_create_bill",
     "propose_mark_bill_paid",
   ],
@@ -48,7 +49,6 @@ export const AGENT_TOOLS: Record<AgentName, string[]> = {
     "get_my_schedule",
     "get_patient_summary",
     "get_patient_history",
-    "search_patients",
     "get_followups",
     "propose_complete_consultation",
     "propose_promote_to_receptionist",

@@ -5,6 +5,7 @@ const CANNOT_HELP =
   /\bi (?:do not|don't) have access\b|\bi (?:cannot|can't|am unable to|am not able to) (?:access|see|look up|check|find)\b|\bnot available (?:to|in) my (?:current )?tools\b/i;
 const MIN_SENTENCE_WORDS = 6;
 const REPEAT_SHARE = 0.75;
+const MIN_LEFTOVER_WORDS = 10;
 
 const words = (text: string) => text.toLowerCase().match(/[a-z0-9]+/g) ?? [];
 
@@ -31,15 +32,32 @@ function dropRepeats(text: string, seen: Set<string>): string {
     .trim();
 }
 
+/** Removes "cannot look that up" sentences; a reply with little else left becomes empty. */
+function dropCannotHelp(text: string): string {
+  if (!CANNOT_HELP.test(text)) return text;
+  const rest = text
+    .split("\n")
+    .map((line) =>
+      splitSentences(line)
+        .filter((sentence) => !CANNOT_HELP.test(sentence))
+        .join(" "),
+    )
+    .join("\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+  return words(rest).length >= MIN_LEFTOVER_WORDS ? rest : "";
+}
+
 /**
- * Merges specialist replies in order. A reply that only says it cannot help is dropped when
- * another specialist answered, and sentences that restate an earlier reply are removed.
+ * Merges specialist replies in order. "Cannot look that up" sentences are removed when another
+ * specialist answered, a reply left empty is dropped, and sentences that restate an earlier reply
+ * are removed.
  */
 export function mergeAgentTexts(texts: string[]): string | null {
-  const replies = texts.map((text) => text.trim()).filter(Boolean);
+  const replies = texts.map((text) => text.trim().replace(/[\u2018\u2019]/g, "'")).filter(Boolean);
   if (replies.length <= 1) return replies[0] ?? null;
 
-  const helpful = replies.filter((text) => !CANNOT_HELP.test(text));
+  const helpful = replies.map(dropCannotHelp).filter(Boolean);
   const chosen = helpful.length ? helpful : replies.slice(0, 1);
 
   const seen = new Set<string>();

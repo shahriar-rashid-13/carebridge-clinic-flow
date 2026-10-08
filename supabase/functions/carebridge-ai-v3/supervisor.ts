@@ -5,7 +5,8 @@ import { findOkf, okfCatalog } from "./okf.ts";
 import { describeState } from "./state.ts";
 import type { AgentName, ConversationState, OkfDoc, RouteDecision } from "./types.ts";
 
-export const SUPERVISOR_TIMEOUT_MS = 12_000;
+// Covers the gateway's 12s primary call plus its 12s Gemini retry on the second key.
+export const SUPERVISOR_TIMEOUT_MS = 25_000;
 const MAX_CONTEXT_MESSAGES = 4;
 const MAX_CONTEXT_CHARS = 600;
 
@@ -20,9 +21,9 @@ const KEYWORDS: Record<AgentName, RegExp> = {
   scheduling:
     /\b(book|booking|appointments?|slots?|reschedul\w*|cancel\w*|waitlist|wait list|available|availability|schedule|follow-?ups?|confirm)\b/i,
   billing:
-    /\b(bills?|billing|invoices?|pay|paid|payments?|fees?|cost|price|refunds?|charges?|taka|bkash|cash)\b/i,
+    /\b(bills?|billing|unbilled|unpaid|outstanding|dues?|invoices?|pay|paid|payments?|fees?|cost|price|refunds?|charges?|taka|bkash|cash)\b/i,
   records:
-    /\b(prescriptions?|medicines?|medications?|history|profile|records?|diagnos\w*|consultations?|promote|role)\b/i,
+    /\b(prescriptions?|medicines?|medications?|history|profile|records?|diagnos\w*|consultations?|promote|role|find (?:a |the )?patients?|search (?:for )?(?:a |the )?patients?|contact details|phone numbers?)\b/i,
   triage:
     /\b(symptoms?|pain|ache|fever|cough|headache|rash|dizzy|nausea|which doctor|specialist|sick|hurts?|feel(ing)?)\b/i,
 };
