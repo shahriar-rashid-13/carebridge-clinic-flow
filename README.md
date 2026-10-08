@@ -1,217 +1,334 @@
-# CareBridge Portal
+# CareBridge Clinic Flow
 
-Clinic appointment and patient management app with an AI assistant, built for SJ Innovation
-Assessments 2 and 3. Patients book visits, doctors run consultations and write prescriptions,
-receptionists confirm appointments, handle billing and run recall campaigns, and a multi-agent AI
-assistant looks things up and proposes actions for the user to confirm.
+CareBridge is a role-based clinic operations portal with appointment management, clinical workflows, automated communications, and a guarded multi-agent AI assistant. It was built for the SJ Innovation assessments and runs publicly on Vercel and Supabase.
 
-- Live app: https://carebridge-clinic-flow.vercel.app
-- Assessment 3 report (evaluation results, tracks, credentials): [`docs/assessment-3/ASSESSMENT_3_REPORT.md`](docs/assessment-3/ASSESSMENT_3_REPORT.md)
-- Architecture diagram: [`docs/assessment-3/architecture.png`](docs/assessment-3/architecture.png)
-- Whole-project report and system overview: `../FINAL_REPORT.md` and `../docs/PROJECT_OVERVIEW.md`
-  in the parent folder, next to the `carebridge-liteLLM` and `carebridge-rag` repositories.
+[Live application](https://carebridge-clinic-flow.vercel.app) · [Complete project report](docs/FINAL_PROJECT_REPORT.md) · [Assessment 2 report](docs/assessment-2/ASSESSMENT_2_REPORT.md) · [Assessment 3 report](docs/assessment-3/ASSESSMENT_3_REPORT.md) · [Project overview](docs/PROJECT_OVERVIEW.md)
 
-All patient and doctor data is synthetic.
+![CareBridge architecture](docs/assessment-3/architecture.png)
 
-## What is in this repository
+Architecture sources: [interactive HTML](docs/assessment-3/architecture.html) · [Mermaid](docs/assessment-3/architecture.mmd)
 
-| Path | Contents |
+> All patient, doctor, appointment, prescription, and clinic data in the application is synthetic. The only real dataset used by the wider project is a public Kaggle no-show dataset used offline for model evaluation; it is not loaded into the application.
+
+## Repositories
+
+CareBridge is split across three public repositories:
+
+| Repository | Responsibility |
 |---|---|
-| `src/` | React frontend (TanStack Start and Router, Vite, Tailwind, shadcn/ui) |
-| `supabase/migrations/` | Database changes: slot conflicts, role promotion, AI tables, automations, RAG, email outbox, campaigns, calendar sync, AI memory and metrics |
-| `supabase/functions/carebridge-ai-v3/` | Multi-agent assistant (Assessment 3, live): supervisor, four specialists, guardrails, OKF policy files |
-| `supabase/functions/carebridge-ai-v2/` | Single-agent assistant (Assessment 2), kept deployed as the evaluation baseline |
-| `supabase/functions/message-dispatcher/`, `resend-webhook/`, `unsubscribe/` | Email reminders and campaigns through Resend, signed delivery webhook, unsubscribe links |
-| `supabase/functions/calendar-sync/` | Google Calendar sync for confirmed appointments |
-| `supabase/functions/carebridge-ai/`, `embed-check/` | Older direct-Gemini assistant and a gte-small embedding check, kept for reference |
-| `eval/`, `scripts/agent-eval*.mjs` | Agent evaluation: 42 labelled scenarios, runner, scorer, saved results and report |
-| `docs/` | Assessment 3 report, demo script, architecture diagram and advisor lists (`docs/assessment-3/`); older working documents (`docs/history/`) |
-| `tests/` | Vitest unit and Edge Function tests, Playwright end-to-end tests |
+| [carebridge-clinic-flow](https://github.com/shahriar-rashid-13/carebridge-clinic-flow) | This repository: React application, Supabase migrations, Edge Functions, tests, and agent evaluation |
+| [carebridge-liteLLM](https://github.com/shahriar-rashid-13/carebridge-liteLLM) | Server-side LiteLLM gateway deployed on Vercel; routes chat, embedding, and evaluation models |
+| [carebridge-rag](https://github.com/shahriar-rashid-13/carebridge-rag) | Synthetic knowledge corpus, ingestion tools, retrieval evaluation, and offline no-show model |
 
-## Assessment 3 additions
+## Architecture
 
-- **Multi-agent assistant** (`carebridge-ai-v3`): emergency gate, injection and PII guardrails,
-  a supervisor that routes to triage, scheduling, billing or records agents (with up to two
-  handoffs), low-confidence clarifying questions, shared conversation memory
-  (`ai_conversation_state`), 15 OKF policy files (`get_policy`), and knowledge search that
-  re-ranks 20 candidates to 5 with citations. Production uses v3 (`VITE_AI_FUNCTION`).
-- **Email reminders** through Resend with retries, quiet hours and opt-out, plus a signed
-  delivery-status webhook.
-- **Google Calendar** sync on confirm, reschedule and cancel.
-- **Recall campaigns** (`/campaigns`): segments, preview, send, daily allowance, unsubscribe
-  links, frequency cap and results with 14-day bookings.
-- **AI metrics** (`/metrics`, receptionists): v2 vs v3 latency, tokens, fallbacks, routes,
-  guardrail events and the evaluation scores.
-- **Observability and CI:** Sentry for the browser and Edge Functions; GitHub Actions runs the
-  type check, unit tests, build and Playwright on every push.
-- **Agent evaluation:** `node scripts/agent-eval.mjs --run <id>` runs the scenarios against v2
-  and v3 with the E2E test users; `node scripts/agent-eval-report.mjs` writes
-  `eval/AGENT_EVAL_REPORT.md`.
+The browser runs a React 19 application built with TanStack Start, TanStack Router, Vite, Tailwind CSS, and shadcn/ui. Vercel hosts the frontend. Supabase provides Auth, Postgres, Row Level Security (RLS), pgvector, pg_cron, Vault, and Deno Edge Functions.
 
-## Features
+The browser communicates only with Supabase. It never receives model-provider keys or calls a model directly. AI requests go to a Supabase Edge Function, which calls the separate LiteLLM gateway over HTTPS. The gateway has no clinic database access or user identity.
 
-**Roles.** Every user has a `profiles.role`: `patient`, `doctor`, or `receptionist`. New sign-ups
-are patients; a receptionist can promote them. Sign-in uses Supabase Auth (email/password or
-Google). Demo accounts are shown on the login page.
+Every AI database tool uses a Supabase client created with the caller's JWT. The same RLS policies therefore constrain both the normal UI and the assistant. Slot conflicts, role promotion, waitlist allocation, reminders, and other invariants are also enforced in Postgres rather than only in the client.
 
-- **Patient:** book appointments, see appointments, prescriptions, and bills, join the waitlist,
-  accept waitlist offers.
-- **Doctor:** schedule, patient records, consultation view (diagnosis, prescription, notes,
-  complete visit).
-- **Receptionist:** confirm, reschedule, and cancel appointments, manage doctors and patients,
-  billing, no-show follow-ups, reports.
+### AI versions
 
-**Booking.** Appointments start as `requested`, are `confirmed` by a receptionist, and become
-`completed` after the consultation. A partial unique index blocks double booking of the same
-doctor, date, and slot. `get_taken_slots` exposes taken times without revealing who booked them.
+- **`carebridge-ai-v3` is the production default configured through `VITE_AI_FUNCTION`.** It is the Assessment 3 multi-agent implementation.
+- **`carebridge-ai-v2` remains deployed as the Assessment 2 baseline** for comparative evaluation.
+- `carebridge-ai/` contains the older direct-Gemini source retained for reference. It is not the production implementation.
+- The UI source falls back to the legacy `carebridge-ai` name if `VITE_AI_FUNCTION` is omitted, so production and local environments should explicitly set `VITE_AI_FUNCTION=carebridge-ai-v3`.
 
-**Automations** (`20260929010000_automations.sql`):
+## Product capabilities
 
-- pg_cron job `clinic-automations` runs `run_clinic_automations()` every 15 minutes. It sends
-  24-hour reminders, flags no-shows (confirmed visits not completed 1 hour after start) for
-  receptionist follow-up, and expires unanswered waitlist offers.
-- Trigger `appointment_slot_freed` runs when an appointment is cancelled or moved. It calls
-  `offer_slot`, which offers the free slot to the oldest waiting patient for 120 minutes. Declined
-  or expired offers pass to the next patient.
-- The UI shows these through the notification bell and the waitlist and follow-up panels.
+### Roles and routes
 
-**AI assistant** (`/ai`, Edge Function `carebridge-ai-v2`):
+New accounts are patients. A receptionist can promote an account to doctor or receptionist.
 
-- Verifies the user's JWT, loads the role, and queries Supabase with the user's JWT, so Row Level
-  Security applies to every tool.
-- Rate limits: 30 messages per minute, 1,000 per day. History: last 16 messages.
-- Tool loop: at most 4 rounds and 6 tool calls per round, 120 s total budget.
-- Read tools per role (`get_my_appointments`, `get_my_schedule`, `search_patients`, and others)
-  plus `search_knowledge` for the RAG knowledge base.
-- Write actions are never run directly. The model calls a `propose_*` tool, the chat shows a card,
-  and the action runs only after the user presses Confirm (`ai_pending_actions`, claimed once).
-- Models are reached through the LiteLLM gateway (`carebridge-liteLLM`) with the model group
-  `carebridge-agent`; the gateway handles Gemini retries and OpenRouter fallbacks. The function
-  records which model group answered in the turn metadata.
-- Safety rules: guidance only, not diagnosis; answers knowledge questions only from retrieved
-  records; never names people from those records; never gives doses; points to 999 for
-  emergencies.
+| Role | Routes and capabilities |
+|---|---|
+| Patient | `/dashboard`, `/book`, `/appointments`, `/prescriptions`, `/profile`, `/ai`; request, cancel, or reschedule appointments, join the waitlist, accept offers, update profile details, and use the assistant |
+| Doctor | `/dashboard`, `/schedule`, `/appointments`, `/records`, `/consult/:id`, `/ai`; view assigned patients and schedules, record diagnoses, prescriptions, and notes, and complete consultations |
+| Receptionist | `/dashboard`, `/appointments`, `/doctors`, `/patients`, `/billing`, `/reports`, `/campaigns`, `/metrics`, `/ai`; manage appointments, staff, patients, bills, follow-ups, campaigns, reporting, and AI metrics |
 
-**RAG search** (`20260930000000_rag_documents.sql`, `20260930000200_rag_keyword_fallback.sql`,
-`carebridge-ai-v2/tools-knowledge.ts`):
+There is **no patient billing page**. `/billing` is receptionist-only; patients can ask the role-aware assistant to retrieve their own bills under RLS.
 
-- Table `rag_documents` (pgvector 768 dimensions, full-text, trigram). The corpus and upload
-  script live in `carebridge-rag`.
-- `match_rag_documents` merges semantic (cosine at least 0.55), full-text, and fuzzy (trigram at
-  least 0.6) results with reciprocal rank fusion. If embedding fails, keyword matches still work.
-- Signed-in users can read only visible, non-noise rows. Only the service role can write.
-- `search_knowledge` embeds the question, calls the RPC (top 5), and anonymises names before the
-  model sees the text.
+Appointments progress from `requested` to `confirmed`, then to `completed` after consultation. A partial unique database index prevents two active appointments from occupying the same doctor, date, and time slot. `get_taken_slots` reveals unavailable times without exposing patient identity.
 
-## Metrics
+### Multi-agent assistant and guardrails
 
-Assessment 3 results (agent task success, search, no-show model) are in
-[`docs/assessment-3/ASSESSMENT_3_REPORT.md`](docs/assessment-3/ASSESSMENT_3_REPORT.md). Tests on 8 October 2026: 464 Vitest tests and
-8 Playwright end-to-end tests pass.
+The v3 assistant processes a turn through:
 
-Assessment 2 results (1 October 2026):
+1. A deterministic emergency gate for red-flag phrases.
+2. Input length, prompt-injection, and PII-redaction guardrails.
+3. A structured supervisor that selects `triage`, `scheduling`, `billing`, or `records`, with a keyword fallback if model routing fails.
+4. A low-confidence clarification path below the configured confidence threshold.
+5. One specialist plus up to two handoffs for multi-intent requests.
+6. Output checks that block medicine doses, raw IDs, tool-call text, and repeated content.
 
-- Tests: 209 Vitest tests and 10 Playwright end-to-end tests pass.
-- RAG retrieval (hybrid search, clean index, top 5): hit rate 1.00 on matching queries, 0.96 on
-  edge queries, 0.97 on typo-and-junk queries; out-of-scope questions return nothing (5 of 5).
-  With 300 noise rows included, noisy-query hit rate drops to 0.47, which is why noise rows are
-  flagged and hidden. Details: `carebridge-rag/eval/RAG_EVAL_REPORT.md`.
-- Specialization from symptoms (Track 4): 100% on held-out visit notes and 79.2% on hand-written
-  descriptions (TF-IDF + logistic regression); 89.6% on hand-written descriptions with Gemini
-  zero-shot. Details: `carebridge-rag/eval/CLASSIFICATION_REPORT.md`.
+Shared conversation state expires after 24 hours and carries details such as the selected specialization, doctor, date, pending request, and recently listed appointments. Clinic policy answers use 15 reviewed OKF files with citations; general medical and clinic knowledge uses RAG.
+
+The assistant provides guidance rather than diagnosis, does not expose names from retrieved records, does not provide medicine doses, and directs emergencies to 999. Requests are rate-limited to 30 messages per minute and 1,000 per day per user.
+
+### Proposal-confirm write flow
+
+Read tools may run immediately, but the model cannot directly change clinic data. Every write tool creates an `ai_pending_actions` proposal:
+
+1. The Edge Function validates the requested action and stores a pending record.
+2. The chat renders a human-readable Confirm/Cancel card.
+3. Only an explicit confirmation claims the action once, revalidates it, and executes it with the user's JWT.
+4. The result is persisted so retries or double-clicks cannot execute the same action twice.
+
+This applies to booking, cancellation, rescheduling, waitlist actions, consultation completion, appointment confirmation, billing, role promotion, and follow-up resolution.
+
+### RAG knowledge search
+
+Assessment 3 uses **20,758 synthetic records** embedded with **gte-small at 384 dimensions**. Document embeddings are generated locally in `carebridge-rag`; query embeddings run in the Supabase Edge runtime, avoiding an external embedding quota during live searches.
+
+`match_rag_documents` combines vector, full-text, and trigram retrieval. V3 requests 20 candidates, then re-ranks them to 5 with the chat model; if re-ranking times out, the fused retrieval order is used. The gte-small cosine threshold is 0.82. RLS exposes only visible, non-noise rows, and medicine amounts in other patients' records are replaced with `[dose omitted]`.
+
+The older v2 baseline uses the Assessment 2 retrieval path and is retained for comparison. Search methodology and A2-versus-A3 results are documented in the [Assessment 3 report](docs/assessment-3/ASSESSMENT_3_REPORT.md).
+
+### Automations and integrations
+
+- **Clinic automations:** `run_clinic_automations()` runs every 15 minutes through pg_cron. It creates 24-hour reminders, flags possible no-shows one hour after a confirmed appointment begins, and expires unanswered waitlist offers.
+- **Waitlist fill:** cancelling or moving an appointment triggers an offer to the oldest eligible waitlist entry. Offers last 120 minutes; declined or expired offers pass to the next patient.
+- **Resend email:** reminder and campaign messages enter `message_outbox`. `message-dispatcher` runs every minute, observes 22:00–08:00 Dhaka quiet hours, checks opt-outs, uses idempotency keys, and retries after 1, 5, 15, and 60 minutes.
+- **Signed webhook:** `resend-webhook` verifies the Svix signature, deduplicates events, and advances delivery state without allowing late events to regress it.
+- **Recall campaigns:** receptionists can preview and send overdue check-up, missed-visit, and follow-up segments from `/campaigns`. Campaigns include a daily allowance, frequency cap, signed unsubscribe links, one-click unsubscribe headers, and 14-day booking conversion metrics.
+- **Google Calendar:** confirmed, rescheduled, and cancelled appointments queue idempotent `calendar_jobs`; `calendar-sync` creates, updates, or deletes events in the shared clinic calendar.
+
+## Security and observability
+
+- RLS is enabled across application tables. Patients see their own data, doctors see their assigned patients, and receptionists receive clinic-wide operational access.
+- The assistant queries with the caller's JWT, not the service-role key.
+- Security-definer RPCs validate role and ownership; anonymous execution is revoked where it is not required.
+- Browser and Edge Function errors are reported to Sentry. Events are scrubbed of user identity, request bodies, cookies, query strings, typed text, emails, phone numbers, and UUIDs. Browser tracing samples 10% of page loads; session replay is disabled.
+- Assistant turns store structured operational metadata such as route, agents, tools, models, fallback calls, tokens, latency, handoffs, and guardrail events.
+- Receptionists can compare v2 and v3 behavior on `/metrics`; evaluation conversations are excluded.
+- Detailed Supabase advisor findings are linked from the [Assessment 3 report](docs/assessment-3/ASSESSMENT_3_REPORT.md).
 
 ## Local development
 
-Requirements: Node.js 20+ and npm.
+### Prerequisites
 
-```sh
+- Node.js 22
+- npm
+- A Supabase project containing the base Assessment 1 schema
+- Supabase CLI access for database or Edge Function deployment
+
+Install and start the application:
+
+```bash
 npm install
 npm run dev
 ```
 
-Create `.env.local` (gitignored):
+Create a gitignored `.env.local`:
 
-```text
+```dotenv
 VITE_SUPABASE_URL=https://<project-ref>.supabase.co
-VITE_SUPABASE_PUBLISHABLE_KEY=<publishable key>
+VITE_SUPABASE_PUBLISHABLE_KEY=<publishable-key>
 VITE_AI_FUNCTION=carebridge-ai-v3
-VITE_SENTRY_DSN=<optional browser DSN>
+VITE_SENTRY_DSN=<optional-browser-sentry-dsn>
 ```
 
-`VITE_AI_FUNCTION` selects the Edge Function the chat calls (`carebridge-ai-v3` in production,
-`carebridge-ai-v2` for the baseline). Without it, the app uses the older `carebridge-ai` function.
+Only `VITE_*` values are bundled for the browser. Never place service-role, LiteLLM, Resend, or Google credentials in a `VITE_*` variable.
 
-## Tests
+### Environment variables
 
-| Command | What it runs |
+#### Frontend
+
+| Variable | Required | Purpose |
+|---|---:|---|
+| `VITE_SUPABASE_URL` | Yes | Supabase project URL |
+| `VITE_SUPABASE_PUBLISHABLE_KEY` | Yes | Browser-safe Supabase publishable key |
+| `VITE_AI_FUNCTION` | Yes for current behavior | Set to `carebridge-ai-v3` in production; use `carebridge-ai-v2` only for baseline testing |
+| `VITE_SENTRY_DSN` | No | Enables scrubbed browser Sentry reporting |
+
+#### Edge Functions
+
+| Variable | Used by | Purpose |
+|---|---|---|
+| `SUPABASE_URL` | All database-backed functions | Supplied by Supabase |
+| `SUPABASE_ANON_KEY` | `carebridge-ai-v2`, `carebridge-ai-v3` | Supplied by Supabase; combined with the caller JWT so RLS applies |
+| `SUPABASE_SERVICE_ROLE_KEY` | dispatcher, webhook, unsubscribe, calendar, embed check | Supplied by Supabase; server-side only |
+| `SUPABASE_SECRET_KEYS` | `embed-check` only | Optional JSON object of additional accepted secret keys |
+| `LITELLM_BASE_URL` | AI v2/v3 | LiteLLM gateway base URL |
+| `LITELLM_API_KEY` | AI v2/v3 | Gateway authentication key |
+| `CLINIC_TIMEZONE` | AI v2/v3 | Optional; defaults to `Asia/Dhaka` |
+| `SENTRY_DSN` | AI and integration functions | Optional server-side Sentry DSN |
+| `SENTRY_ENVIRONMENT` | AI and integration functions | Optional; defaults to `production` |
+| `RESEND_API_KEY` | `message-dispatcher` | Resend API key |
+| `RESEND_WEBHOOK_SECRET` | `resend-webhook` | Svix signing secret from Resend |
+| `EMAIL_FROM` | `message-dispatcher` | Sender identity |
+| `EMAIL_SANDBOX_TO` | `message-dispatcher` | Optional sandbox redirect for synthetic recipients |
+| `UNSUBSCRIBE_SECRET` | dispatcher and `unsubscribe` | HMAC secret for signed unsubscribe links |
+| `APP_URL` | `message-dispatcher` | Public app URL used in email links; code defaults to the live app |
+| `GOOGLE_SERVICE_ACCOUNT_JSON` | `calendar-sync` | Google service-account JSON |
+| `GOOGLE_CALENDAR_ID` | `calendar-sync` | Shared clinic calendar ID |
+
+The database cron jobs also require two Supabase Vault secrets created outside migrations: `project_url` (the Supabase project URL) and `dispatcher_token` (a strong shared secret used in the `x-dispatcher-token` header).
+
+#### E2E and agent evaluation
+
+Copy `.env.test.example` to `.env.test` and set:
+
+```dotenv
+E2E_BASE_URL=
+E2E_PATIENT_EMAIL=
+E2E_PATIENT_PASSWORD=
+E2E_DOCTOR_EMAIL=
+E2E_DOCTOR_PASSWORD=
+E2E_RECEPTIONIST_EMAIL=
+E2E_RECEPTIONIST_PASSWORD=
+```
+
+`E2E_BASE_URL` is optional. When omitted, Playwright starts the local development server on port 4173. The agent evaluator additionally reads `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY` from `.env.local`.
+
+## Scripts and tests
+
+| Command | Purpose |
 |---|---|
-| `npm test` | Vitest: unit tests (`tests/unit`) and Edge Function tests (`tests/edge`) |
-| `npm run test:coverage` | Vitest with a coverage report |
-| `npm run test:e2e` | Playwright end-to-end tests (`tests/e2e`: login, booking) |
+| `npm run dev` | Start the Vite development server |
+| `npm run build` | Create a production build |
+| `npm run build:dev` | Build in development mode |
+| `npm run preview` | Preview the production build |
+| `npm run lint` | Run ESLint |
+| `npm test` | Run the Vitest unit and Edge Function suites |
+| `npm run test:watch` | Run Vitest in watch mode |
+| `npm run test:coverage` | Run Vitest with V8 coverage |
+| `npm run test:e2e` | Run the serial Playwright suite |
+| `npm run format` | Format the repository with Prettier |
+| `npm run okf:build` | Regenerate the bundled OKF policy module |
 
-The Edge Function tests run the Deno code under Vitest with an in-memory database
-(`tests/helpers/memory-db.ts`) and a mocked gateway, so they need no network or secrets.
+The current Assessment 3 release reports 464 Vitest tests and 8 Playwright tests. Edge Function tests use an in-memory database and mocked gateway, so `npm test` needs no network or production secrets. E2E tests use real test accounts and mutate then clean up live appointment data, so they run serially.
 
-## Database migrations
+Agent evaluation commands:
 
-Migrations in `supabase/migrations/` build on the Assessment 1 schema (profiles, doctors,
-appointments, prescriptions, bills):
+```bash
+# Run or resume labelled scenarios against v2 and v3
+node scripts/agent-eval.mjs --run <run-id>
 
-| Migration | Purpose |
-|---|---|
-| `20260921000000_prevent_active_appointment_slot_conflicts` | Unique active slot per doctor |
-| `20260921010000_promote_patient_to_doctor`, `20260923000000_promote_patient_to_receptionist` | Role promotion RPCs |
-| `20260922000000_add_ai_conversations` | Chat conversations and messages |
-| `20260928000000_ai_v2_turns` | Turn saving and pending-action RPCs for AI V2 |
-| `20260928010000_get_taken_slots` | Taken slots without patient identity |
-| `20260928020000_ai_v2_actions` | RLS hardening, patient reschedule, complete consultation |
-| `20260929000000_normalize_days_and_slots` | `Mon`..`Sun` days, `09:00 AM` slots |
-| `20260929010000_automations` | Notifications, reminders, no-shows, waitlist, pg_cron job |
-| `20260930000000_rag_documents`, `..._source_idx`, `20260930000200_rag_keyword_fallback` | RAG table, indexes, RLS, hybrid search |
-| `20261002000000_get_taken_slots` | Taken slots for a date range |
-| `20261005000000_rag_gte_small`, `20261005010000_rag_search_use_indexes` | gte-small embedding column and faster search at 20,000+ rows |
-| `20261005020000_advisor_fixes` | Supabase advisor fixes (`docs/assessment-3/supabase-advisors.md`) |
-| `20261006000000_message_outbox`, `..._dispatcher_timeout` | Email outbox, delivery events, dispatcher cron |
-| `20261006010000_recall_segments`, `20261006020000_campaigns` | Recall segments, campaigns, opt-outs |
-| `20261006040000_calendar_sync` | Google Calendar job queue and cron |
-| `20261007010000_ai_conversation_state` | Shared memory for the v3 agents |
-| `20261007020000_ai_metrics`, `20261007030000_ai_metrics_skip_eval` | `/metrics` RPC; evaluation conversations left out |
+# Restrict versions or scenarios
+node scripts/agent-eval.mjs --run <run-id> --versions v2,v3 --only <id1,id2>
 
-Apply with the Supabase CLI:
+# Re-score saved output without model calls
+node scripts/agent-eval.mjs --rescore <run-id>
 
-```sh
+# Build the comparative report from saved runs
+node scripts/agent-eval-report.mjs --v2 <run1,run2,run3> --v3 <run1,run2,run3>
+```
+
+The evaluator never confirms proposals, so it does not change clinic records.
+
+## Database and migrations
+
+Migrations in `supabase/migrations/` extend the base Assessment 1 schema. Apply them in timestamp order:
+
+```bash
+npx supabase link --project-ref <project-ref>
 npx supabase db push
 ```
 
-## Deployment
+Major migration groups:
 
-- **Frontend:** Vercel builds from `main` automatically. Set the `VITE_*` variables in the Vercel
-  project.
-- **Edge Functions:**
+| Area | Migrations |
+|---|---|
+| Booking and roles | Active-slot uniqueness, doctor/receptionist promotion, normalized working days and slots, privacy-preserving taken-slot RPCs |
+| AI v2 | Conversations, messages, turn metadata, pending actions, action RPC hardening |
+| Automations | Notifications, no-show follow-ups, waitlists, offers, triggers, and the 15-minute pg_cron job |
+| RAG | `rag_documents`, source/full-text/trigram/vector indexes, keyword fallback, 384-d `embedding_gte`, and indexed search |
+| Assessment 3 integrations | Message outbox/events, dispatcher timeout handling, recall segments/campaigns, calendar queue and cron |
+| AI v3 and metrics | Shared conversation state, metrics RPCs, evaluation filtering |
+| Hardening | Advisor fixes, foreign-key indexes, policy optimization, revoked function access, and duplicate-index removal |
 
-  ```sh
-  npx supabase functions deploy carebridge-ai-v3
-  npx supabase functions deploy carebridge-ai-v2
-  ```
+Migrations assume the original Assessment 1 tables—such as `profiles`, `doctors`, `appointments`, `prescriptions`, and `bills`—already exist. They also enable required extensions such as pgvector, pg_cron, pg_net, and Vault-dependent scheduling where applicable.
 
-  Supabase secrets (names only): `LITELLM_BASE_URL`, `LITELLM_API_KEY` (the gateway master key),
-  optional `CLINIC_TIMEZONE` (default `Asia/Dhaka`), `SENTRY_DSN`, `SENTRY_ENVIRONMENT`;
-  for email `RESEND_API_KEY`, `RESEND_WEBHOOK_SECRET`, `EMAIL_FROM`, `EMAIL_SANDBOX_TO`,
-  `UNSUBSCRIBE_SECRET`, `APP_URL`; for the calendar `GOOGLE_SERVICE_ACCOUNT_JSON`,
-  `GOOGLE_CALENDAR_ID`. `SUPABASE_URL`, `SUPABASE_ANON_KEY` and the service role key are provided
-  by Supabase.
+## Edge Function deployment
 
-Never commit keys. The browser only ever receives the publishable key.
+Set the required Supabase secrets first, then deploy the current functions:
 
-## Other documents
+```bash
+# JWT-protected user-facing AI functions
+npx supabase functions deploy carebridge-ai-v3
+npx supabase functions deploy carebridge-ai-v2
+
+# Internal cron workers: Supabase JWT verification is disabled because pg_cron
+# authenticates with the private x-dispatcher-token checked by each function
+npx supabase functions deploy message-dispatcher --no-verify-jwt
+npx supabase functions deploy calendar-sync --no-verify-jwt
+
+# Public provider/token endpoints: each performs its own verification
+npx supabase functions deploy resend-webhook --no-verify-jwt
+npx supabase functions deploy unsubscribe --no-verify-jwt
+```
+
+Do not add `--no-verify-jwt` to the AI deployments: they require a signed-in user's JWT and then use it for RLS-scoped tool calls.
+
+`resend-webhook` cannot present a Supabase login and instead requires a valid Svix signature. `unsubscribe` requires a valid signed, expiring unsubscribe token. The cron workers accept either the Vault-backed dispatcher token or a service-role bearer token and reject other callers.
+
+`embed-check` is a temporary diagnostic function, not a persistent production service:
+
+```bash
+npx supabase functions deploy embed-check --no-verify-jwt
+# Run the cross-runtime embedding check, then remove the function:
+npx supabase functions delete embed-check
+```
+
+It accepts only a service-role key or a key listed in `SUPABASE_SECRET_KEYS`.
+
+The deployable function set in this repository is therefore:
+
+- `carebridge-ai-v3` — production multi-agent assistant
+- `carebridge-ai-v2` — Assessment 2 baseline
+- `message-dispatcher` — Resend outbox worker
+- `resend-webhook` — signed delivery event receiver
+- `unsubscribe` — signed public opt-out endpoint
+- `calendar-sync` — Google Calendar queue worker
+- `embed-check` — temporary gte-small verification utility
+
+## CI and deployment behavior
+
+[GitHub Actions CI](https://github.com/shahriar-rashid-13/carebridge-clinic-flow/actions/workflows/ci.yml) uses Node.js 22.
+
+- Every pull request and every push to `main` runs `npm ci`, TypeScript checking, all Vitest tests, and the production build.
+- Playwright E2E runs **only on pushes to `main`**, after the first job passes. It does not run on pull requests because it books and cancels appointments in the live test database.
+- E2E is serialized across workflow runs. Failure artifacts retain the Playwright report and test results for seven days.
+- Vercel deploys the frontend from `main`. Database migrations and Edge Functions are deployed separately with the Supabase CLI.
+
+CI secrets comprise the two frontend Supabase values and the six role-specific E2E credential variables listed above.
+
+## Repository map
 
 | Path | Contents |
 |---|---|
-| `docs/assessment-3/` | `ASSESSMENT_3_REPORT.md` (submission report), `DEMO_SCRIPT.md`, `supabase-advisors.md` (advisor findings before and after), `architecture.mmd` and `.png` |
-| `eval/` | Agent evaluation: scenarios, raw results, `AGENT_EVAL_REPORT.md`, `AGENT_EVAL_NOTES.md` |
-| `docs/history/` | Assessment 2 working documents: implementation plan, AI v2 phase B report and test notes, the A2 demo submission note, and early AI-written audits (`opinions/`). Kept for reference; parts are out of date. |
-| `AGENTS.md` | Instructions for coding agents working in this repository |
+| `src/routes/` | TanStack Router file-based application routes |
+| `src/components/clinic/` | Role-aware shell, AI panel, notifications, and workflow UI |
+| `src/lib/` | Auth, clinic data access, Supabase client, metrics, campaigns, and Sentry |
+| `supabase/migrations/` | Database changes, RLS, RPCs, triggers, queues, and cron schedules |
+| `supabase/functions/carebridge-ai-v3/` | Production supervisor, specialists, guardrails, shared state, RAG, and OKF policies |
+| `supabase/functions/carebridge-ai-v2/` | Assessment 2 single-agent baseline and shared gateway/Sentry utilities |
+| `supabase/functions/message-dispatcher/` | Resend outbox processing |
+| `supabase/functions/resend-webhook/` | Signed delivery events |
+| `supabase/functions/unsubscribe/` | Signed opt-out endpoint |
+| `supabase/functions/calendar-sync/` | Google Calendar worker |
+| `tests/unit/` | React, state, utility, campaign, metrics, and evaluation tests |
+| `tests/edge/` | AI, guardrail, RAG, email, webhook, unsubscribe, and calendar tests |
+| `tests/e2e/` | Playwright login and booking flows |
+| `eval/` | Labelled agent scenarios, saved results, and comparative report |
+| `docs/` | Project overview, assessment reports, architecture, demo, and advisor notes |
 
-The assessment briefs and plans are in `../docs/` in the parent folder.
+## Known limitations
 
-The original UI was generated with [Lovable](https://lovable.dev) and then connected to Supabase.
+- Chat and re-ranking use free-tier models. The LiteLLM fallback chain reduces outages but cannot eliminate provider quota exhaustion or variable latency.
+- V3 adds a supervisor call and is therefore slower than v2; production re-ranking may fall back to fused search order after its timeout.
+- gte-small is economical and runs in the Edge runtime, but evaluation shows it is weaker than the earlier Gemini embeddings on very short or noisy queries.
+- The supervisor can occasionally route a multi-part request to only one specialist.
+- Resend sandbox mode redirects messages for synthetic patients to the configured sandbox recipient until a sending domain is verified.
+- The no-show model is an offline evaluation trained on a 2016 Brazilian public dataset. It is not used for live clinical decisions and would require retraining before real deployment.
+- This repository contains migrations layered on the Assessment 1 database rather than a fresh bootstrap migration for the complete base schema.
+
+## Further documentation
+
+- [Complete project report](docs/FINAL_PROJECT_REPORT.md) — comprehensive reviewer handoff across all three repositories
+- [Project overview](docs/PROJECT_OVERVIEW.md) — system boundaries, data flows, and design decisions
+- [Assessment 2 report](docs/assessment-2/ASSESSMENT_2_REPORT.md) — v2 assistant, initial automations, RAG baseline, and test evidence
+- [Assessment 3 report](docs/assessment-3/ASSESSMENT_3_REPORT.md) — integrations, v3 evaluation, model metrics, observability, security, and known limits
+- [Architecture HTML](docs/assessment-3/architecture.html) and [Mermaid source](docs/assessment-3/architecture.mmd)
