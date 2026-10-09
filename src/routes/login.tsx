@@ -8,6 +8,7 @@ import { Activity, Loader2, ShieldCheck, ArrowRight } from "lucide-react";
 import { toast } from "sonner";
 import { GoogleIcon } from "@/components/google-icon";
 import { useTheme } from "@/lib/theme/theme-context";
+import { SkyBackdrop } from "@/components/sky-backdrop";
 
 export const Route = createFileRoute("/login")({
   validateSearch: (search: Record<string, unknown>) => ({
@@ -70,27 +71,34 @@ function LoginPage() {
     <div className="min-h-screen bg-[#f7f2e9]">
       <div className="grid min-h-screen lg:grid-cols-2">
         {/* Left Panel - Editorial */}
-        <div className="relative hidden flex-col justify-between bg-[#123f35] p-12 text-white lg:flex">
-          <div>
+        <div className="relative hidden flex-col justify-between overflow-hidden p-12 text-[#172a25] lg:flex">
+          <SkyBackdrop />
+          <div className="relative">
             <Link to="/" className="flex items-center gap-2.5">
-              <span className="grid size-8 shrink-0 place-items-center rounded-md bg-white text-[#123f35]">
+              <span className="grid size-8 shrink-0 place-items-center rounded-md bg-[#123f35] text-white">
                 <Activity className="size-4" />
               </span>
               <span className="font-display text-lg leading-none">CareBridge</span>
             </Link>
           </div>
 
-          <div className="max-w-md">
-            <p className="eyebrow text-[#a9b6a3]">Welcome back</p>
-            <h1 className="mt-4 font-display text-[3rem] leading-[1.1] tracking-[-0.04em]">
+          <div className="relative max-w-md">
+            <p className="eyebrow cb-rise text-[#2f4a43]">Welcome back</p>
+            <h1
+              className="cb-rise mt-4 font-display text-[3rem] leading-[1.1] tracking-[-0.04em]"
+              style={{ "--delay": "120ms" } as React.CSSProperties}
+            >
               Healthcare that feels more human.
             </h1>
-            <p className="mt-6 text-lg leading-8 text-[#b7c2be]">
+            <p
+              className="cb-rise mt-6 text-lg leading-8 text-[#2f4a43]"
+              style={{ "--delay": "240ms" } as React.CSSProperties}
+            >
               Access your clinic account to manage appointments, prescriptions, and care plans.
             </p>
           </div>
 
-          <div className="flex items-center gap-4 text-sm text-[#b7c2be]">
+          <div className="relative flex items-center gap-4 text-sm text-[#2f4a43]">
             <ShieldCheck className="size-5" />
             <span>Your data is secure and private</span>
           </div>

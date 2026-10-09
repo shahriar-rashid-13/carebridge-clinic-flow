@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import type { AppointmentStatus } from "@/lib/clinic/types";
 
@@ -12,6 +13,8 @@ const map: Record<string, string> = {
   Inactive: "bg-[#edf1ee] text-[#5f6b66] border-[#d7ddd8]",
 };
 
+const NEEDS_ACTION = new Set(["Requested", "Unpaid"]);
+
 export function StatusBadge({
   status,
   className,
@@ -19,14 +22,29 @@ export function StatusBadge({
   status: AppointmentStatus | string;
   className?: string;
 }) {
+  const previous = useRef(status);
+  const [changes, setChanges] = useState(0);
+
+  useEffect(() => {
+    if (previous.current !== status) {
+      previous.current = status;
+      setChanges((n) => n + 1);
+    }
+  }, [status]);
+
   return (
     <span
+      key={changes}
       className={cn(
-        "inline-flex shrink-0 items-center rounded-full border px-2.5 py-0.5 text-xs font-medium tracking-wide",
+        "inline-flex shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium tracking-wide",
         map[status] ?? "bg-muted text-muted-foreground border-border",
+        changes > 0 && "app-pop",
         className,
       )}
     >
+      {NEEDS_ACTION.has(status) && (
+        <span aria-hidden className="app-pulse-dot size-1.5 rounded-full bg-current" />
+      )}
       {status}
     </span>
   );

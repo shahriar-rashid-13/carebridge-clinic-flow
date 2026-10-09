@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { useTheme } from "@/lib/theme/theme-context";
 
@@ -33,6 +33,36 @@ export function PageHeader({
   );
 }
 
+/** Counts from the previous value to the new one so changes in a number are noticed. */
+function CountUp({ value }: { value: number }) {
+  const [shown, setShown] = useState(0);
+  const from = useRef(0);
+
+  useEffect(() => {
+    const start = from.current;
+    from.current = value;
+    const integer = Number.isInteger(value);
+    if (start === value || window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      setShown(value);
+      return;
+    }
+    const began = performance.now();
+    const duration = 700;
+    let frame = 0;
+    const tick = (now: number) => {
+      const t = Math.min((now - began) / duration, 1);
+      const eased = 1 - (1 - t) ** 3;
+      const next = start + (value - start) * eased;
+      setShown(integer ? Math.round(next) : next);
+      if (t < 1) frame = requestAnimationFrame(tick);
+    };
+    frame = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frame);
+  }, [value]);
+
+  return <>{Number.isInteger(value) ? shown : shown.toFixed(1)}</>;
+}
+
 export function StatCard({
   label,
   value,
@@ -60,7 +90,7 @@ export function StatCard({
   return (
     <div
       className={cn(
-        "rounded-[12px] border border-[rgba(23,42,37,0.08)] p-5",
+        "app-rise app-lift rounded-[12px] border border-[rgba(23,42,37,0.08)] p-5",
         isVibrant ? "card-3d" : "editorial-shadow-sm",
         tones[tone],
       )}
@@ -79,7 +109,7 @@ export function StatCard({
           isVibrant ? "text-[#1a1c1e]" : "text-[#172a25]",
         )}
       >
-        {value}
+        {typeof value === "number" ? <CountUp value={value} /> : value}
       </p>
       {hint && (
         <p
@@ -105,12 +135,12 @@ export function EmptyState({
   action?: ReactNode;
 }) {
   return (
-    <div className="rounded-[12px] border border-dashed border-[rgba(23,42,37,0.15)] bg-[#f7f2e9] px-6 py-14 text-center">
+    <div className="app-rise rounded-[12px] border border-dashed border-[rgba(23,42,37,0.15)] bg-[#f7f2e9] px-6 py-14 text-center">
       <p className="font-display text-[1.35rem] leading-none text-[#172a25]">{title}</p>
       {description && (
         <p className="mx-auto mt-2 max-w-sm text-sm leading-6 text-[#5f6b66]">{description}</p>
       )}
-      {action && <div className="mt-5 flex justify-center">{action}</div>}
+      {action && <div className="app-nudge mt-5 flex justify-center">{action}</div>}
     </div>
   );
 }
@@ -134,7 +164,7 @@ export function Panel({
   return (
     <section
       className={cn(
-        "rounded-[14px] border border-[rgba(23,42,37,0.08)] bg-white",
+        "app-rise app-panel rounded-[14px] border border-[rgba(23,42,37,0.08)] bg-white",
         isVibrant ? "card-3d" : "editorial-shadow",
         className,
       )}

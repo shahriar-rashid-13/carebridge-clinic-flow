@@ -87,8 +87,26 @@ function NavList({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const { theme } = useTheme();
 
+  const navRef = React.useRef<HTMLElement>(null);
+  const [indicator, setIndicator] = React.useState<{ top: number; height: number } | null>(null);
+
+  React.useLayoutEffect(() => {
+    const active = navRef.current?.querySelector<HTMLElement>('[data-active="true"]');
+    setIndicator(active ? { top: active.offsetTop, height: active.offsetHeight } : null);
+  }, [pathname, role]);
+
   return (
-    <nav className="space-y-1">
+    <nav ref={navRef} className="relative space-y-1">
+      {indicator && (
+        <span
+          aria-hidden
+          className={cn(
+            "app-nav-indicator absolute inset-x-0 rounded-[10px]",
+            theme === "calm" ? "bg-[#123f35]" : "bg-[#2d5a3d]",
+          )}
+          style={{ top: indicator.top, height: indicator.height }}
+        />
+      )}
       {NAV[role].map((item) => {
         const active = pathname === item.to;
         return (
@@ -96,18 +114,17 @@ function NavList({ onNavigate }: { onNavigate?: () => void }) {
             key={item.to}
             to={item.to}
             onClick={onNavigate}
+            data-active={active}
             className={cn(
-              "flex items-center gap-3 rounded-[10px] px-3 py-2.5 text-sm transition-colors",
+              "app-nav-link relative flex items-center gap-3 rounded-[10px] px-3 py-2.5 text-sm transition-colors",
               active
-                ? theme === "calm"
-                  ? "bg-[#123f35] font-medium text-white"
-                  : "bg-[#2d5a3d] font-medium text-white"
+                ? "font-medium text-white"
                 : theme === "calm"
                   ? "text-[#5f6b66] hover:bg-[#f1eee6] hover:text-[#172a25]"
                   : "text-[#666666] hover:bg-[#f5f0e8] hover:text-[#1a1a2e]",
             )}
           >
-            <item.icon className="size-4 shrink-0" />
+            <item.icon className="app-nav-icon size-4 shrink-0" />
             <span className="truncate">{item.label}</span>
           </Link>
         );
@@ -284,7 +301,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           {isAiRoute ? (
             children
           ) : (
-            <div className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-8 sm:py-12">{children}</div>
+            <div
+              key={pathname}
+              className="app-page-in mx-auto w-full max-w-6xl px-4 py-8 sm:px-8 sm:py-12"
+            >
+              {children}
+            </div>
           )}
         </main>
       </div>

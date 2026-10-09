@@ -44,6 +44,15 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
 export function NotificationBell() {
   const notifications = React.useContext(NotificationsContext);
   const [open, setOpen] = React.useState(false);
+  const unreadCount = notifications?.unread ?? 0;
+  const previousUnread = React.useRef(unreadCount);
+  const [rings, setRings] = React.useState(0);
+
+  React.useEffect(() => {
+    if (unreadCount > previousUnread.current) setRings((n) => n + 1);
+    previousUnread.current = unreadCount;
+  }, [unreadCount]);
+
   if (!notifications) return null;
   const { items, unread, markAllRead } = notifications;
 
@@ -62,9 +71,12 @@ export function NotificationBell() {
           aria-label={unread ? `Notifications, ${unread} unread` : "Notifications"}
           className="relative shrink-0 border-[rgba(23,42,37,0.15)]"
         >
-          <Bell className="size-4" />
+          <Bell key={rings} className={cn("size-4", rings > 0 && "app-bell-ring")} />
           {unread > 0 && (
-            <span className="absolute -right-1 -top-1 grid min-w-5 place-items-center rounded-full bg-[#c2185b] px-1 text-[10px] font-semibold leading-5 text-white">
+            <span
+              key={`count-${rings}`}
+              className="app-pop absolute -right-1 -top-1 grid min-w-5 place-items-center rounded-full bg-[#c2185b] px-1 text-[10px] font-semibold leading-5 text-white"
+            >
               {unread > 9 ? "9+" : unread}
             </span>
           )}
