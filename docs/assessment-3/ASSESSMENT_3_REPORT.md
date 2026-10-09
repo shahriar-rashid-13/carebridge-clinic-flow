@@ -1,5 +1,7 @@
 # CareBridge: Assessment 3 submission report
 
+### SJ Innovation | Shahriar Rashid | Oct 8, 2026
+
 CareBridge is a clinic appointment and records app with an AI assistant. Assessment 3 makes it
 **integrated** (real email and calendar services, a recall campaign module), **intelligent** (a
 supervised multi-agent assistant with guardrails), **measured** (agent and search evaluation
@@ -305,15 +307,13 @@ CLI.
 
 ## 8. Demo and credentials
 
-Demo script: [`DEMO_SCRIPT.md`](DEMO_SCRIPT.md). Video: TO FILL.
-
 | Role | Name | Email |
 |---|---|---|
 | Patient | Sarah Jenkins | `sarah@example.com` |
 | Doctor | Dr. Marcus Vance (General Medicine) | `marcus@example.com` |
 | Receptionist | Clara Morgan | `clara@example.com` |
 
-Passwords are given in the Dev Control Tower submission, not in the repository. The login page
+Passwords will be given in the Dev Control Tower submission, not in the repository. The login page
 lists these demo users and fills in the email with one click.
 
 ---

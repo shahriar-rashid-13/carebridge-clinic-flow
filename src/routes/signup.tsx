@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Activity, Loader2, ShieldCheck, ArrowRight } from "lucide-react";
 import { toast } from "sonner";
+import { GoogleIcon } from "@/components/google-icon";
 import { useTheme } from "@/lib/theme/theme-context";
 
 export const Route = createFileRoute("/signup")({
@@ -189,7 +190,11 @@ function SignupPage() {
               <Button
                 type="submit"
                 variant={isVibrant ? "3d-primary" : undefined}
-                className={isVibrant ? "h-11 w-full" : "h-11 w-full rounded-[10px] bg-[#123f35] text-white hover:bg-[#0b2e27]"}
+                className={
+                  isVibrant
+                    ? "h-11 w-full"
+                    : "h-11 w-full rounded-[10px] bg-[#123f35] text-white hover:bg-[#0b2e27]"
+                }
                 disabled={isLoading}
               >
                 {isLoading ? <Loader2 className="mr-2 size-4 animate-spin" /> : null}
@@ -208,17 +213,29 @@ function SignupPage() {
               <Button
                 type="button"
                 variant={isVibrant ? "3d-mist" : "outline"}
-                className={isVibrant ? "h-11 w-full" : "h-11 w-full rounded-[10px] border-[rgba(23,42,37,0.15)] bg-white text-[#172a25] hover:bg-[#f1eee6]"}
+                className={
+                  isVibrant
+                    ? "h-11 w-full"
+                    : "h-11 w-full rounded-[10px] border-[rgba(23,42,37,0.15)] bg-white text-[#172a25] hover:bg-[#f1eee6]"
+                }
                 disabled={isLoading}
                 onClick={handleGoogleSignup}
               >
-                {isLoading ? <Loader2 className="mr-2 size-4 animate-spin" /> : null}
+                {isLoading ? (
+                  <Loader2 className="mr-2 size-4 animate-spin" />
+                ) : (
+                  <GoogleIcon className="mr-2 size-4" />
+                )}
                 Continue with Google
               </Button>
 
               <div className="text-center text-sm">
                 <span className="text-[#5f6b66]">Already have an account? </span>
-                <Link to="/login" search={{ redirect: "/dashboard" }} className="font-medium text-[#123f35] hover:underline">
+                <Link
+                  to="/login"
+                  search={{ redirect: "/dashboard" }}
+                  className="font-medium text-[#123f35] hover:underline"
+                >
                   Log in instead
                 </Link>
               </div>
