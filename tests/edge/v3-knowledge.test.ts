@@ -117,15 +117,23 @@ describe("rerank", () => {
 });
 
 describe("search_knowledge v3", () => {
-  it("fetches 20 candidates, re-ranks them, and returns five cited results", async () => {
+  it("fetches 20 candidates, re-ranks them, and returns five cited results when supported", async () => {
     const clinic = edgeClinic();
     clinic.rpcResult("match_rag_documents", { data: rows(20) });
     llmReply('{"ranking": [20, 1, 2, 3, 4]}');
+    llmReply('{"supported": true, "reason": "passages answer payment"}');
 
     const result = await searchKnowledge.run({ query: "how do I pay" }, clinic.ctx("patient"));
 
     expect(clinic.rpcCalls("match_rag_documents")[0]?.args).toMatchObject({ match_count: 20 });
-    expect(result).toMatchObject({ ok: true, mode: "gte", ranking: "reranked", candidates: 20 });
+    expect(result).toMatchObject({
+      ok: true,
+      mode: "gte",
+      ranking: "reranked",
+      candidates: 20,
+      supported: true,
+      refused: false,
+    });
     const results = result["results"] as { citation: string; text: string }[];
     expect(results).toHaveLength(5);
     expect(results[0]).toMatchObject({
@@ -134,14 +142,15 @@ describe("search_knowledge v3", () => {
     });
   });
 
-  it("returns the fused top five when re-ranking times out", async () => {
+  it("returns the fused top five when re-ranking times out and support passes", async () => {
     const clinic = edgeClinic();
     clinic.rpcResult("match_rag_documents", { data: rows(7) });
     fetchMock.mockRejectedValueOnce(new DOMException("timed out", "TimeoutError"));
+    llmReply('{"supported": true, "reason": "fused passages still answer"}');
 
     const result = await searchKnowledge.run({ query: "fees" }, clinic.ctx("patient"));
 
-    expect(result).toMatchObject({ ranking: "fused" });
+    expect(result).toMatchObject({ ranking: "fused", supported: true });
     expect((result["results"] as { citation: string }[]).map((row) => row.citation)).toEqual([
       "[FAQ-000001]",
       "[FAQ-000002]",
@@ -151,11 +160,17 @@ describe("search_knowledge v3", () => {
     ]);
   });
 
-  it("says it does not know when nothing matches, without calling the model", async () => {
+  it("refuses without calling the support model when nothing matches", async () => {
     const clinic = edgeClinic();
     clinic.rpcResult("match_rag_documents", { data: [] });
     const result = await searchKnowledge.run({ query: "parking on Mars" }, clinic.ctx("patient"));
-    expect(result).toMatchObject({ ok: true, results: [] });
+    expect(result).toMatchObject({
+      ok: true,
+      results: [],
+      supported: false,
+      refused: true,
+    });
+    expect(String(result["message"])).toMatch(/do not know/i);
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
@@ -172,7 +187,7 @@ describe("search_knowledge v3", () => {
         },
       ],
     });
-    llmReply('{"ranking": [1]}');
+    llmReply('{"supported": true, "reason": "prescription text"}');
 
     const result = await searchKnowledge.run({ query: "fever" }, clinic.ctx("doctor"));
 

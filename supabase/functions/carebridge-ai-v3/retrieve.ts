@@ -1,0 +1,166 @@
+import { embedGte } from "../carebridge-ai-v2/embed-gte.ts";
+import { callGateway, embedText, MODEL_ALIAS } from "../carebridge-ai-v2/gateway.ts";
+import type { ToolContext } from "../carebridge-ai-v2/shared.ts";
+import { anonymise } from "../carebridge-ai-v2/tools-knowledge.ts";
+
+export const CANDIDATE_COUNT = 20;
+export const RESULT_COUNT = 5;
+export const RERANK_TIMEOUT_MS = 6_000;
+const RERANK_SNIPPET_CHARS = 500;
+// Same cutoff as v2; see carebridge-ai-v2/tools-knowledge.ts.
+const MIN_SIMILARITY_GTE = 0.82;
+const EMBED_TIMEOUT_MS = 8_000;
+
+// Medicine amounts in other patients' records. The assistant must never pass them on as advice.
+const DOSE_AMOUNT =
+  /\b\d+(?:\.\d+)?\s?(?:mg|mcg|µg|g|ml|iu|units?|puffs?|tablets?|tabs?|capsules?|caps?|drops?)\b/gi;
+export const DOSE_OMITTED = "[dose omitted]";
+
+/** Removes medicine amounts from anonymised visit notes and prescriptions. FAQ text is kept. */
+export function stripDoses(text: string, recordType: string): string {
+  return recordType === "faq" ? text : text.replace(DOSE_AMOUNT, DOSE_OMITTED);
+}
+
+export type Candidate = {
+  doc_id: string;
+  record_type: string;
+  specialization: string | null;
+  diagnosis: string | null;
+  text: string;
+  similarity: number | null;
+};
+
+type MatchRow = {
+  doc_id: string;
+  record_type: string;
+  content: string | null;
+  specialization: string | null;
+  diagnosis: string | null;
+  similarity: number | null;
+};
+
+export type RerankOutcome = {
+  results: Candidate[];
+  mode: "reranked" | "fused";
+  error?: string;
+};
+
+export type HybridRetrieveOutcome = {
+  results: Candidate[];
+  mode: "gte" | "gemini" | "keyword_only";
+  ranking: "reranked" | "fused" | "none";
+  candidates: number;
+  error?: string;
+};
+
+export function rerankPrompt(query: string, candidates: Candidate[]): string {
+  const list = candidates
+    .map(
+      (candidate, index) =>
+        `[${index + 1}] ${candidate.text.slice(0, RERANK_SNIPPET_CHARS).replace(/\s+/g, " ")}`,
+    )
+    .join("\n");
+  return [
+    "Rank the passages by how well they answer the question. Ignore passages that do not help.",
+    `Question: ${query}`,
+    "Passages:",
+    list,
+    `Reply with only JSON like {"ranking": [3, 1, 7]}: the numbers of the ${RESULT_COUNT} most useful passages, best first.`,
+  ].join("\n");
+}
+
+/** Reads the model's ranking; returns candidate indexes, or null when the reply is unusable. */
+export function parseRanking(raw: string | null, count: number): number[] | null {
+  const match = raw?.match(/\{[\s\S]*\}/);
+  if (!match) return null;
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(match[0]);
+  } catch {
+    return null;
+  }
+  const ranking = (parsed as { ranking?: unknown })?.ranking;
+  if (!Array.isArray(ranking)) return null;
+  const indexes: number[] = [];
+  for (const value of ranking) {
+    const number = typeof value === "string" ? Number(value) : value;
+    if (!Number.isInteger(number) || number < 1 || number > count) continue;
+    if (!indexes.includes(number - 1)) indexes.push(number - 1);
+  }
+  return indexes.length ? indexes : null;
+}
+
+/** Re-orders search candidates with the model; keeps the fused search order if that fails. */
+export async function rerank(query: string, candidates: Candidate[]): Promise<RerankOutcome> {
+  const fused = { results: candidates.slice(0, RESULT_COUNT), mode: "fused" as const };
+  if (candidates.length <= 1) return fused;
+
+  const result = await callGateway({
+    model: MODEL_ALIAS,
+    messages: [{ role: "user", content: rerankPrompt(query, candidates) }],
+    timeoutMs: RERANK_TIMEOUT_MS,
+  });
+  if (!result.ok) return { ...fused, error: result.detail };
+  const ranking = parseRanking(result.content, candidates.length);
+  if (!ranking) return { ...fused, error: "invalid ranking" };
+
+  const picked = ranking.slice(0, RESULT_COUNT).map((index) => candidates[index]!);
+  return { results: picked, mode: "reranked" };
+}
+
+/** One hybrid retrieve + re-rank pass used by agentic multi-hop search. */
+export async function hybridRetrieve(
+  query: string,
+  filters: { recordType: string | null; specialization: string | null },
+  ctx: ToolContext,
+): Promise<HybridRetrieveOutcome> {
+  let embedding: HybridRetrieveOutcome["mode"] = "keyword_only";
+  let queryEmbeddingGte: string | null = null;
+  let queryEmbedding: string | null = null;
+  const gte = await embedGte(query);
+  if (gte.ok) {
+    embedding = "gte";
+    queryEmbeddingGte = `[${gte.embedding.join(",")}]`;
+  } else {
+    const embedded = await embedText(query, EMBED_TIMEOUT_MS);
+    if (embedded.ok) {
+      embedding = "gemini";
+      queryEmbedding = `[${embedded.embedding.join(",")}]`;
+    }
+  }
+
+  const { data, error } = await ctx.db.rpc("match_rag_documents", {
+    query_text: query,
+    query_embedding: queryEmbedding,
+    query_embedding_gte: queryEmbeddingGte,
+    min_similarity_gte: MIN_SIMILARITY_GTE,
+    match_count: CANDIDATE_COUNT,
+    filter_record_type: filters.recordType,
+    filter_specialization: filters.specialization,
+  });
+  if (error) throw new Error(`match_rag_documents failed: ${error.message}`);
+
+  const candidates: Candidate[] = ((data ?? []) as MatchRow[]).map((row) => ({
+    doc_id: String(row.doc_id),
+    record_type: String(row.record_type),
+    specialization: row.specialization ?? null,
+    diagnosis: row.diagnosis ?? null,
+    text: stripDoses(anonymise(String(row.content ?? "")), String(row.record_type)),
+    similarity:
+      typeof row.similarity === "number" ? Math.round(row.similarity * 100) / 100 : null,
+  }));
+  if (!candidates.length) {
+    return { results: [], mode: embedding, ranking: "none", candidates: 0 };
+  }
+
+  const ranked = await rerank(query, candidates);
+  if (ranked.error)
+    console.warn(JSON.stringify({ tool: "search_knowledge", rerank_fallback: ranked.error }));
+  return {
+    results: ranked.results,
+    mode: embedding,
+    ranking: ranked.mode,
+    candidates: candidates.length,
+    ...(ranked.error ? { error: ranked.error } : {}),
+  };
+}
