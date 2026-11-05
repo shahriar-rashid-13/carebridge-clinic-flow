@@ -1,0 +1,110 @@
+{
+  "schema_version": 1,
+  "assessment": "A4-Option1",
+  "status": "placeholder",
+  "placeholder": true,
+  "run_id": null,
+  "run_at": null,
+  "system_under_test": "carebridge-ai-v3 agentic RAG (plan → multi-hop → refuse)",
+  "a3_baseline_lock": "A3b",
+  "a3_baseline_note": "A3 used Hit@5/MRR/P@5 and a 1–5 LiteLLM judge. RAGAS scores are 0–1 and must be filled by the Step 4 harness — do not treat A3 5.00 as 1.0 RAGAS.",
+  "golden_set": {
+    "path": "carebridge-rag/eval/ragas-golden-set.json",
+    "schema_version": 1,
+    "size": 38,
+    "counts_by_category": {
+      "matching": 10,
+      "edge": 6,
+      "noisy": 6,
+      "policy": 6,
+      "refusal": 5,
+      "multi_hop": 5
+    }
+  },
+  "metrics_scored": [
+    "faithfulness",
+    "answer_relevance",
+    "context_precision",
+    "context_recall"
+  ],
+  "overall": {
+    "n_scored": null,
+    "faithfulness": null,
+    "answer_relevance": null,
+    "context_precision": null,
+    "context_recall": null
+  },
+  "by_category": {
+    "matching": {
+      "n": 10,
+      "faithfulness": null,
+      "answer_relevance": null,
+      "context_precision": null,
+      "context_recall": null
+    },
+    "edge": {
+      "n": 6,
+      "faithfulness": null,
+      "answer_relevance": null,
+      "context_precision": null,
+      "context_recall": null
+    },
+    "noisy": {
+      "n": 6,
+      "faithfulness": null,
+      "answer_relevance": null,
+      "context_precision": null,
+      "context_recall": null
+    },
+    "policy": {
+      "n": 6,
+      "faithfulness": null,
+      "answer_relevance": null,
+      "context_precision": null,
+      "context_recall": null
+    },
+    "multi_hop": {
+      "n": 5,
+      "faithfulness": null,
+      "answer_relevance": null,
+      "context_precision": null,
+      "context_recall": null
+    }
+  },
+  "refusal": {
+    "n": 5,
+    "correct_refuse_rate": null,
+    "false_answer_rate": null,
+    "note": "Correct when expect_refuse and the system refuses without inventing facts."
+  },
+  "a3_conceptual_bridge": {
+    "matching_hit_at_5": 1.0,
+    "matching_mrr": 1.0,
+    "matching_p_at_5": 0.63,
+    "edge_hit_at_5": 0.92,
+    "noisy_hit_at_5": 0.9,
+    "judge_faithfulness_1_to_5": 5.0,
+    "judge_relevance_1_to_5": 5.0,
+    "note": "Retrieval metrics approximate context_recall / context_precision conceptually. Judge scores are a different scale — re-score with RAGAS tomorrow."
+  },
+  "ci_gate": {
+    "wired": false,
+    "thresholds": null,
+    "note": "Thresholds TBD after the first live harness run."
+  },
+  "langfuse": {
+    "wired": false,
+    "note": "Deferred — not part of today's clinic-flow UI slice."
+  },
+  "fill_tomorrow": [
+    "overall.faithfulness",
+    "overall.answer_relevance",
+    "overall.context_precision",
+    "overall.context_recall",
+    "by_category.*.*",
+    "refusal.correct_refuse_rate",
+    "run_id",
+    "run_at",
+    "ci_gate.thresholds"
+  ]
+}

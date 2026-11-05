@@ -34,10 +34,15 @@ import {
 import {
   AGENT_EVAL_ROWS,
   EVAL_RUN_DATE,
+  RAGAS_CATEGORY_ROWS,
+  RAGAS_EVAL_ROWS,
+  RAGAS_PANEL_DESCRIPTION,
   SEARCH_EVAL_ROWS,
   type EvalRow,
 } from "@/lib/clinic/eval-scores";
+import { useRagasEval } from "@/hooks/use-ragas-eval";
 import { useClinic } from "@/lib/clinic/store";
+
 
 export const Route = createFileRoute("/_authenticated/metrics")({
   head: () => ({
@@ -65,6 +70,8 @@ function MetricsPage() {
   const { role } = useClinic();
   const [days, setDays] = React.useState<number>(30);
   const [metrics, setMetrics] = React.useState<AiMetrics | null>(null);
+  const ragas = useRagasEval();
+
 
   React.useEffect(() => {
     if (role !== "receptionist") return;
@@ -234,6 +241,31 @@ function MetricsPage() {
               <EvalTable rows={SEARCH_EVAL_ROWS} baseline="A2" current="v3" />
             </Panel>
           </div>
+
+          <Panel
+            title="RAGAS quality (Assessment 4)"
+            description={ragas.description || RAGAS_PANEL_DESCRIPTION}
+          >
+            {ragas.placeholder ? (
+              <p className="mb-4 text-sm text-[#5f6b66]">
+                Scores are blank until the RAGAS harness run. A3 columns are conceptual bridges
+                only (different scale / metric) — not claimed numerical baselines.
+              </p>
+            ) : null}
+            <EvalTable
+              rows={ragas.overallRows.length ? ragas.overallRows : RAGAS_EVAL_ROWS}
+              baseline="A3 bridge"
+              current="A4 RAGAS"
+            />
+            <div className="mt-6">
+              <p className="mb-2 text-sm font-medium text-[#172a25]">By golden-set category</p>
+              <EvalTable
+                rows={ragas.categoryRows.length ? ragas.categoryRows : RAGAS_CATEGORY_ROWS}
+                baseline="—"
+                current="A4 RAGAS"
+              />
+            </div>
+          </Panel>
         </>
       )}
     </div>
