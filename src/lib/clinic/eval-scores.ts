@@ -1,9 +1,24 @@
 // Offline evaluation results shown on /metrics. Source files:
-// eval/AGENT_EVAL_REPORT.md (this repository) and carebridge-rag/eval/SEARCH_EVAL_V3_REPORT.md.
+// eval/AGENT_EVAL_REPORT.md (this repository), carebridge-rag/eval/SEARCH_EVAL_V3_REPORT.md,
+// and eval/ragas-eval-results.placeholder.json (A4 RAGAS — filled by harness).
+
+import {
+  loadRagasEvalReport,
+  ragasCategoryRows,
+  ragasOverallRows,
+  ragasPanelDescription,
+} from "@/lib/clinic/ragas-eval";
 
 export type EvalRow = { label: string; hint: string; baseline: string; current: string };
 
 export const EVAL_RUN_DATE = "2026-10-08";
+
+/** A4 RAGAS panel — placeholder until the live harness writes scores. */
+export const RAGAS_EVAL_REPORT = loadRagasEvalReport();
+export const RAGAS_EVAL_ROWS: EvalRow[] = ragasOverallRows(RAGAS_EVAL_REPORT);
+export const RAGAS_CATEGORY_ROWS: EvalRow[] = ragasCategoryRows(RAGAS_EVAL_REPORT);
+export const RAGAS_PANEL_DESCRIPTION = ragasPanelDescription(RAGAS_EVAL_REPORT);
+
 
 export const AGENT_EVAL_ROWS: EvalRow[] = [
   {
