@@ -13,6 +13,7 @@ import {
   textArg,
   ToolInputError,
   uuidArg,
+  weekdayLongOf,
   weekdayOf,
   type AppointmentRow,
 } from "../../supabase/functions/carebridge-ai-v2/shared.ts";
@@ -79,6 +80,11 @@ describe("dates", () => {
   it("weekdayOf returns short names", () => {
     expect(weekdayOf("2026-09-29")).toBe("Tue");
     expect(weekdayOf("2026-10-04")).toBe("Sun");
+  });
+
+  it("weekdayLongOf returns full names", () => {
+    expect(weekdayLongOf("2026-11-06")).toBe("Friday");
+    expect(weekdayLongOf("2026-11-07")).toBe("Saturday");
   });
 
   it("dateRange defaults from today", () => {

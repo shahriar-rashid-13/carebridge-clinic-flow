@@ -1,9 +1,16 @@
-import { boolArg, dateArg, uuidArg, weekdayOf, type ToolDefinition } from "./shared.ts";
+import {
+  boolArg,
+  dateArg,
+  uuidArg,
+  weekdayLongOf,
+  weekdayOf,
+  type ToolDefinition,
+} from "./shared.ts";
 
 export const getDoctors: ToolDefinition = {
   name: "get_doctors",
   description:
-    "List CareBridge doctors with specialization, consultation fee, room, working days, and slot times. Receptionists may include inactive doctors.",
+    "List CareBridge doctors with specialization, consultation fee, room, working days, and slot times. working_days are weekday labels (Sun–Sat), not proof a doctor is free on a calendar date. Call get_available_slots before saying anyone is available on a specific date. Receptionists may include inactive doctors.",
   parameters: {
     type: "object",
     properties: {
@@ -70,9 +77,18 @@ export const getAvailableSlots: ToolDefinition = {
     }
 
     const weekday = weekdayOf(date);
+    const weekday_long = weekdayLongOf(date);
     const workingDays: string[] = Array.isArray(doctor.available_days) ? doctor.available_days : [];
     if (!workingDays.includes(weekday)) {
-      return { ok: true, date, weekday, available_slots: [], note: `The doctor does not work on ${weekday}.`, working_days: workingDays };
+      return {
+        ok: true,
+        date,
+        weekday,
+        weekday_long,
+        available_slots: [],
+        note: `The doctor does not work on ${weekday_long} (${date}).`,
+        working_days: workingDays,
+      };
     }
 
     const { data: taken, error: takenError } = await ctx.db.rpc("get_taken_slots", {
@@ -86,6 +102,7 @@ export const getAvailableSlots: ToolDefinition = {
       ok: true,
       date,
       weekday,
+      weekday_long,
       available_slots: slots.filter((slot) => typeof slot === "string" && !occupied.has(slot)),
     };
   },

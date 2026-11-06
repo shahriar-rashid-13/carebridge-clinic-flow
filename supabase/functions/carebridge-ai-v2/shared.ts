@@ -108,10 +108,24 @@ export function daysBetween(from: string, to: string): number {
   return Math.round((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 86_400_000);
 }
 
+const WEEKDAY_SHORT = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as const;
+const WEEKDAY_LONG = [
+  "Sunday",
+  "Monday",
+  "Tuesday",
+  "Wednesday",
+  "Thursday",
+  "Friday",
+  "Saturday",
+] as const;
+
 export function weekdayOf(date: string): string {
-  return ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][
-    new Date(`${date}T12:00:00Z`).getUTCDay()
-  ]!;
+  return WEEKDAY_SHORT[new Date(`${date}T12:00:00Z`).getUTCDay()]!;
+}
+
+/** Full weekday name for prompts and tool replies (calendar date, not server local clock). */
+export function weekdayLongOf(date: string): string {
+  return WEEKDAY_LONG[new Date(`${date}T12:00:00Z`).getUTCDay()]!;
 }
 
 export function todayIn(timeZone: string): string {

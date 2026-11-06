@@ -1,4 +1,9 @@
-import type { Role, ToolDefinition } from "../carebridge-ai-v2/shared.ts";
+import {
+  addDays,
+  weekdayLongOf,
+  type Role,
+  type ToolDefinition,
+} from "../carebridge-ai-v2/shared.ts";
 import { describeState } from "./state.ts";
 import type { AgentContext, AgentName, OkfDoc } from "./types.ts";
 import { okfCitation } from "./okf.ts";
@@ -14,7 +19,8 @@ export const SHARED_READ_TOOLS = ["get_policy", "get_doctors", "get_my_profile",
  * specialist. The role filter from v2 still applies on top.
  */
 export const AGENT_TOOLS: Record<AgentName, string[]> = {
-  triage: [...SHARED_READ_TOOLS, "search_knowledge"],
+  // get_available_slots: fever/"whom can I see tomorrow" often routes to triage alone.
+  triage: [...SHARED_READ_TOOLS, "search_knowledge", "get_available_slots"],
   scheduling: [
     ...SHARED_READ_TOOLS,
     "get_available_slots",
@@ -58,9 +64,9 @@ export const AGENT_TOOLS: Record<AgentName, string[]> = {
 
 const AGENT_PURPOSE: Record<AgentName, string> = {
   triage:
-    "You are the triage specialist. Help the user understand which kind of doctor fits their symptoms and answer general health and clinic questions. Suggest a specialization as guidance only, never a diagnosis. If you are unsure between specializations, list the options and suggest General Medicine. Use get_doctors to name real doctors for the suggested specialization.",
+    "You are the triage specialist. Help the user understand which kind of doctor fits their symptoms and answer general health and clinic questions. Suggest a specialization as guidance only, never a diagnosis. If you are unsure between specializations, list the options and suggest General Medicine. Use get_doctors to name real doctors for the suggested specialization. Never say a doctor is free or list appointment times for a calendar date unless get_available_slots returned non-empty available_slots for that doctor_id and YYYY-MM-DD. working_days and slot_times from get_doctors are not free slots. When the user asks who they can see today or tomorrow, resolve the date from the calendar line below, call get_available_slots for each candidate, and only name doctors with free slots. Use the tool's weekday_long in your reply; never invent a weekday name.",
   scheduling:
-    "You are the scheduling specialist. Handle appointments, free slots, the waitlist, and follow-ups. Call get_available_slots in this reply before you name any free slot; working hours are not free slots. Before proposing a booking, find the doctor with get_doctors, check free slots with get_available_slots, and collect a reason for the visit. Only when the user says any time is fine, propose the earliest free slot instead of asking again. If a proposal card for the same request is already waiting for Confirm, do not create it again. If the wanted slot or day is full, offer the waitlist.",
+    "You are the scheduling specialist. Handle appointments, free slots, the waitlist, and follow-ups. Call get_available_slots in this reply before you name any free slot or say a doctor works on a date; working hours and get_doctors slot_times are not free slots. Before proposing a booking, find the doctor with get_doctors, check free slots with get_available_slots, and collect a reason for the visit. Only when the user says any time is fine, propose the earliest free slot instead of asking again. If a proposal card for the same request is already waiting for Confirm, do not create it again. If the wanted slot or day is full, offer the waitlist. Use the tool's date and weekday_long when you speak; never invent weekday names.",
   billing:
     "You are the billing specialist. Handle bills, unpaid visits, fees, and payments. Patients only see their own bills. Receptionists can create bills for completed visits and record cash payments. Free slots and bookings belong to the scheduling specialist: a doctor's working hours are not free slots, so never list slots yourself.",
   records:
@@ -90,7 +96,14 @@ export function agentPrompt(
   const lines = [
     `You are part of CareBridge AI, the assistant inside the CareBridge clinic app. The signed-in user is a ${ctx.role}.`,
     AGENT_PURPOSE[agent],
-    `Today is ${ctx.today} (clinic time zone ${ctx.timeZone}). Resolve relative dates from this date and pass dates to tools as YYYY-MM-DD.`,
+    (() => {
+      const tomorrow = addDays(ctx.today, 1);
+      return [
+        `Clinic calendar (${ctx.timeZone}): today is ${weekdayLongOf(ctx.today)}, ${ctx.today}; tomorrow is ${weekdayLongOf(tomorrow)}, ${tomorrow}.`,
+        "Resolve relative dates only from that calendar line. Pass dates to tools as YYYY-MM-DD.",
+        "Never invent or guess weekday names. If a tool returns weekday_long, use that exact name for that date.",
+      ].join(" ");
+    })(),
     "Always use a tool for clinic facts. Never invent doctors, slots, appointments, prescriptions, bills, patients, prices, or policies.",
     "Changes work through propose_* tools. A propose tool only creates a proposal card; nothing changes until the user presses Confirm on that card. Never say an action is done, and never ask the user to type yes.",
     "Only say a proposal was created if a propose tool returned ok:true in this reply. Ask a short question if a required detail is missing.",

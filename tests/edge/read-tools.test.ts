@@ -40,6 +40,7 @@ describe("get_available_slots", () => {
       ok: true,
       date: "2026-10-05",
       weekday: "Mon",
+      weekday_long: "Monday",
       available_slots: ["09:30AM", "10:00 AM"],
     });
     expect(clinic.rpcCalls("get_taken_slots")[0]?.args).toEqual({
@@ -57,8 +58,9 @@ describe("get_available_slots", () => {
     expect(result).toMatchObject({
       ok: true,
       weekday: "Sat",
+      weekday_long: "Saturday",
       available_slots: [],
-      note: "The doctor does not work on Sat.",
+      note: "The doctor does not work on Saturday (2026-10-03).",
     });
   });
 

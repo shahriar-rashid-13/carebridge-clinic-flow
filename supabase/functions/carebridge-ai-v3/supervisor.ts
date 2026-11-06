@@ -19,7 +19,7 @@ const AGENT_SUMMARY: Record<AgentName, string> = {
 
 const KEYWORDS: Record<AgentName, RegExp> = {
   scheduling:
-    /\b(book|booking|appointments?|slots?|reschedul\w*|cancel\w*|waitlist|wait list|available|availability|schedule|follow-?ups?|confirm)\b/i,
+    /\b(book|booking|appointments?|slots?|reschedul\w*|cancel\w*|waitlist|wait list|available|availability|schedule|follow-?ups?|confirm|whom can i see|who can i see|see (?:a |the )?doctor|doctors? (?:for|on) (?:today|tomorrow))\b/i,
   billing:
     /\b(bills?|billing|unbilled|unpaid|outstanding|dues?|invoices?|pay|paid|payments?|fees?|cost|price|refunds?|charges?|taka|bkash|cash)\b/i,
   records:

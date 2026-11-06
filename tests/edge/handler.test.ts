@@ -199,7 +199,8 @@ describe("chat turns", () => {
     const request = llmRequest(0);
     expect(request.model).toBe("carebridge-agent");
     expect(request.messages[0].content).toContain("The signed-in user is a patient.");
-    expect(request.messages[0].content).toContain("Today is 2026-10-01");
+    expect(request.messages[0].content).toContain("2026-10-01");
+    expect(request.messages[0].content).toMatch(/today is Thursday, 2026-10-01/i);
     expect(request.messages.at(-1)).toEqual({ role: "user", content: "Hi" });
     expect(clinic.rpcCalls("ai_append_turn")[0]?.args).toMatchObject({
       p_conversation_id: null,
