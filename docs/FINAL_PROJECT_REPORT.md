@@ -1,8 +1,8 @@
 # CareBridge Final Project Report
 
-**SJ Innovation intern assignment · Assessments 1–3 · Shahriar Rashid · 16 September–9 October 2026**
+**SJ Innovation intern assignment · Assessments 1–4 · Shahriar Rashid · 16 September–6 November 2026**
 
-CareBridge is a role-based clinic operations system for patients, doctors, and receptionists. It combines appointment and consultation workflows, billing, automated reminders and waitlists, recall campaigns, email and calendar integrations, a guarded multi-agent assistant, a synthetic retrieval corpus, and offline evaluation. The implementation is split across three public repositories and deployed through Vercel and Supabase.
+CareBridge is a role-based clinic operations system for patients, doctors, and receptionists. It combines appointment and consultation workflows, billing, automated reminders and waitlists, recall campaigns, email and calendar integrations, a guarded multi-agent assistant, a synthetic retrieval corpus, offline and live evaluation, and optional Langfuse tracing. The implementation is split across three public repositories and deployed through Vercel and Supabase.
 
 > **Data statement:** all patient, doctor, appointment, prescription, billing, and clinic data in CareBridge is synthetic. The only real-world dataset is the public, anonymised Kaggle Medical Appointment No Shows dataset. It is used offline for model evaluation and is never loaded into the application or Supabase.
 
@@ -15,6 +15,9 @@ CareBridge is a role-based clinic operations system for patients, doctors, and r
 | Server-to-server model gateway | [https://carebridge-lite-llm.vercel.app](https://carebridge-lite-llm.vercel.app) |
 | Assessment 2 report | [https://github.com/shahriar-rashid-13/carebridge-clinic-flow/blob/main/docs/assessment-2/ASSESSMENT_2_REPORT.md](https://github.com/shahriar-rashid-13/carebridge-clinic-flow/blob/main/docs/assessment-2/ASSESSMENT_2_REPORT.md) |
 | Assessment 3 report | [https://github.com/shahriar-rashid-13/carebridge-clinic-flow/blob/main/docs/assessment-3/ASSESSMENT_3_REPORT.md](https://github.com/shahriar-rashid-13/carebridge-clinic-flow/blob/main/docs/assessment-3/ASSESSMENT_3_REPORT.md) |
+| Assessment 4 Option 1 write-up | [https://github.com/shahriar-rashid-13/carebridge-clinic-flow/blob/main/docs/assessment-4/OPTION_1_WRITEUP.md](https://github.com/shahriar-rashid-13/carebridge-clinic-flow/blob/main/docs/assessment-4/OPTION_1_WRITEUP.md) |
+| Assessment 4 tag (clinic-flow) | [https://github.com/shahriar-rashid-13/carebridge-clinic-flow/releases/tag/assessment-4](https://github.com/shahriar-rashid-13/carebridge-clinic-flow/releases/tag/assessment-4) |
+| Assessment 4 tag (rag) | [https://github.com/shahriar-rashid-13/carebridge-rag/releases/tag/assessment-4](https://github.com/shahriar-rashid-13/carebridge-rag/releases/tag/assessment-4) |
 | System overview | [https://github.com/shahriar-rashid-13/carebridge-clinic-flow/blob/main/docs/PROJECT_OVERVIEW.md](https://github.com/shahriar-rashid-13/carebridge-clinic-flow/blob/main/docs/PROJECT_OVERVIEW.md) |
 
 ## Table of contents
@@ -36,8 +39,8 @@ CareBridge is a role-based clinic operations system for patients, doctors, and r
 15. [LiteLLM models, timeouts, and fallbacks](#15-litellm-models-timeouts-and-fallbacks)
 16. [Resend, recall campaigns, and unsubscribe](#16-resend-recall-campaigns-and-unsubscribe)
 17. [Google Calendar integration](#17-google-calendar-integration)
-18. [Observability and operational metrics](#18-observability-and-operational-metrics)
-19. [Evaluation design and measured results](#19-evaluation-design-and-measured-results)
+18. [Observability and operational metrics](#18-observability-and-operational-metrics) (includes Assessment 4 Langfuse)
+19. [Evaluation design and measured results](#19-evaluation-design-and-measured-results) (includes [Assessment 4 RAGAS](#195-assessment-4-ragas))
 20. [Testing and CI](#20-testing-and-ci)
 21. [Deployment, configuration, and environment variables](#21-deployment-configuration-and-environment-variables)
 22. [Repository maps](#22-repository-maps)
@@ -57,6 +60,8 @@ The final knowledge corpus contains **20,758 validated synthetic records**: 11,0
 
 The final application test inventory is **464 Vitest unit and Edge Function tests plus 8 Playwright end-to-end tests**. GitHub Actions runs type checking, Vitest, and a production build on pull requests and pushes to `main`; serialized Playwright tests run only after successful pushes to `main` because they mutate and clean up live test appointments.
 
+**Assessment 4 (Option 1 only)** deepened trust around that stack: agentic RAG in `carebridge-ai-v3` (plan → multi-hop hybrid retrieve → refuse when unsupported), a 38-item golden set scored with live RAGAS-aligned 0–1 metrics, a hard `ragas-gate` CI job on `carebridge-rag`, a receptionist `/metrics` RAGAS panel, and optional Langfuse OTEL tracing on the Japan free-cloud host. Options 2 and 3 were not pursued.
+
 ## 2. Assessment timeline and deliverables
 
 | Assessment | Dates | Objective | Delivered outcome |
@@ -64,8 +69,9 @@ The final application test inventory is **464 Vitest unit and Edge Function test
 | Assessment 1 | 16–23 Sep 2026 | Build a functional clinic application with three roles | Patient booking, receptionist operations, doctor consultations, prescriptions, billing, Supabase Auth, role-aware UI, RLS, Vercel deployment |
 | Assessment 2 | 24 Sep–1 Oct 2026 | Add AI, automations, retrieval, classification, and tests | Single tool-calling v2 agent; 16 read and 14 proposal tools; confirmation before mutation; scheduled reminders/no-show follow-up; event-driven waitlist; 5,110-record synthetic corpus; A2 retrieval and specialization evaluation; 209 Vitest and 10 Playwright tests |
 | Assessment 3 | 2–9 Oct 2026 | Integrate external services, improve intelligence, evaluate against A2, and harden operations | Production multi-agent v3; emergency and PII guardrails; 15 OKF policy files; Resend, signed webhooks, unsubscribe, recall campaigns, Google Calendar; 20,758-record gte-small search; no-show study; Sentry and metrics; advisor fixes; CI; 464 Vitest and 8 Playwright tests |
+| Assessment 4 | ~29 Oct–6 Nov 2026 | One measured AI deepening (Option 1) | Agentic RAG in `carebridge-ai-v3` (plan/multi-hop/refuse); 38-item golden set; live RAGAS; hard CI gate on rag; Metrics RAGAS panel; Langfuse OTEL traces (JP); tags `assessment-4` |
 
-The authoritative assessment submissions are the [Assessment 2 report](https://github.com/shahriar-rashid-13/carebridge-clinic-flow/blob/main/docs/assessment-2/ASSESSMENT_2_REPORT.md) and [Assessment 3 report](https://github.com/shahriar-rashid-13/carebridge-clinic-flow/blob/main/docs/assessment-3/ASSESSMENT_3_REPORT.md). Assessment 3 tags exist in all three repositories.
+The authoritative assessment submissions are the [Assessment 2 report](https://github.com/shahriar-rashid-13/carebridge-clinic-flow/blob/main/docs/assessment-2/ASSESSMENT_2_REPORT.md), [Assessment 3 report](https://github.com/shahriar-rashid-13/carebridge-clinic-flow/blob/main/docs/assessment-3/ASSESSMENT_3_REPORT.md), and [Assessment 4 Option 1 write-up](https://github.com/shahriar-rashid-13/carebridge-clinic-flow/blob/main/docs/assessment-4/OPTION_1_WRITEUP.md). Assessment 3 tags exist in all three repositories; Assessment 4 tags `assessment-4` exist on clinic-flow and rag.
 
 ## 3. Repository responsibilities
 
@@ -257,6 +263,10 @@ Production is explicitly configured with `VITE_AI_FUNCTION=carebridge-ai-v3`.
 9. Merge replies and reject output containing raw tool-call syntax, detected contact PII, or medicine-dose patterns.
 10. Restore appropriate redacted values, save the turn, proposals, route, models, tools, usage, latency, handoffs, and guardrail events.
 
+### 11.3 Assessment 4 agentic retrieval
+
+Assessment 4 keeps the same v3 supervisor and hybrid search stack, and adds an agentic layer inside `search_knowledge` (`agentic-rag.ts`): a planner may emit up to two sub-queries, hybrid retrieve + rerank may run for up to two hops, and a support judge refuses when retrieved passages do not support an answer. Traces for those turns are optional Langfuse OTEL posts (`langfuse.ts`); the chat path never fails if tracing is unset or unavailable. This is Option 1 only — no second-product redesign.
+
 ## 12. Agents, tools, confirmation, memory, and guardrails
 
 ### 12.1 Specialists
@@ -303,7 +313,7 @@ V3 separates authoritative clinic policy from generated/retrieved knowledge.
 
 **OKF:** 15 reviewed Markdown files cover accounts and roles, booking, cancellation, consultation fees, emergency guidance, medical-record access, no-show policy, opening hours, payment methods, prescription renewal, privacy, refunds, reminder/email preferences, rescheduling, and waitlist behavior. They are bundled into a generated TypeScript module and cited as `[OKF:<id>]`.
 
-**RAG:** general clinic and health questions use synthetic FAQs, visit notes, and prescriptions. Search results are cited by record id. The assistant must ground answers in returned material and decline unsupported questions.
+**RAG:** general clinic and health questions use synthetic FAQs, visit notes, and prescriptions. Search results are cited by record id. The assistant must ground answers in returned material and decline unsupported questions. Assessment 4 runs that retrieval through the agentic plan / multi-hop / refuse path described in §11.3, still on top of the Assessment 3 hybrid fusion and 20→5 rerank.
 
 This split is evidence-driven: in the policy evaluation, search-only answers averaged 3.14/5 and contradicted policy five times, while OKF answers averaged 4.73/5 with 14 of 15 fully correct.
 
@@ -395,9 +405,13 @@ The calendar event id is deterministically derived from the appointment id, so r
 - Scrubbing removes user identity, request bodies, cookies, query strings, typed text, emails, phones, and UUID-like ids before export.
 - Browser tracing samples 10% of page loads; session replay is disabled.
 - Each assistant reply stores route, agents, tools, serving models, fallback calls, token usage, latency, handoffs, route source, and guardrail events.
-- Receptionists use `/metrics` to compare v2/v3 latency, tokens, model calls, fallback share, tool errors, keyword routes, handoffs, guardrails, daily volume, and saved evaluation scores.
+- Receptionists use `/metrics` to compare v2/v3 latency, tokens, model calls, fallback share, tool errors, keyword routes, handoffs, guardrails, daily volume, and saved evaluation scores, including the Assessment 4 RAGAS quality panel.
 - Tagged evaluation conversations are excluded from production operational metrics.
 - Outbox/event and calendar job status provide durable integration diagnostics.
+
+### Assessment 4 Langfuse (optional)
+
+When Edge secrets are set, `carebridge-ai-v3` posts agentic `search_knowledge` spans through `langfuse.ts` to the Japan free-cloud host **`https://jp.cloud.langfuse.com`**. Ingest uses **OTLP/HTTP** `POST /api/public/otel/v1/traces` with header `x-langfuse-ingestion-version: 4` so observations appear in the live Tracing UI. Required secrets are `LANGFUSE_PUBLIC_KEY`, `LANGFUSE_SECRET_KEY`, and `LANGFUSE_BASE_URL` (JP URL); `LANGFUSE_HOST` is an optional alias. The legacy `POST /api/public/ingestion` (`trace-create` / `span-create`) path is deprecated on Langfuse Cloud (sunset **2026-11-16**) and can return HTTP 207 while Tracing stays empty — production CareBridge does not rely on it. Setup notes: [LANGFUSE.md](https://github.com/shahriar-rashid-13/carebridge-clinic-flow/blob/main/docs/assessment-4/LANGFUSE.md).
 
 ## 19. Evaluation design and measured results
 
@@ -471,6 +485,22 @@ The [no-show report](https://github.com/shahriar-rashid-13/carebridge-rag/blob/m
 
 Gradient boosting is preferred because it has better PR-AUC and flags fewer visits at the same F1. Precision near 31% supports a low-cost reminder or confirmation call, not denial, penalties, or automatic overbooking. The model is offline and is not used for live clinical or scheduling decisions.
 
+### 19.5 Assessment 4 RAGAS
+
+Assessment 4 re-scores trust on a **38-item golden set** (`carebridge-rag/eval/ragas-golden-set.json`) with a live harness (`scripts/ragas-eval-live.mjs`) through `carebridge-judge`. Scale is RAGAS-aligned **0–1**. Assessment 3 matching faithfulness/relevance of **5.00/5.00** used a **1–5** LiteLLM judge — **those scores must not be equated to RAGAS 1.0**. A3b Hit@5 / MRR / P@5 remain the retrieval ranking bridge (recall / ranking / precision conceptually); A4 context recall / context precision are the corresponding RAGAS-style metrics on agentic answers, not a unit conversion of Hit@5/P@5.
+
+**Run:** `a4-live-2026-11-06` · `n=38` · `real_ragas=true`
+
+| Metric | Score |
+|---|---:|
+| Faithfulness | 1.00 |
+| Answer relevance | 0.96 |
+| Context precision | 0.84 |
+| Context recall | 0.99 |
+| Refusal accuracy | 1.00 (5/5) |
+
+Hard CI floors (calibrated from that run) live in `eval/ragas-thresholds.json`: faithfulness ≥ 0.85, answer_relevance ≥ 0.80, context_precision ≥ 0.65, context_recall ≥ 0.75. Detail: [OPTION_1_WRITEUP.md](https://github.com/shahriar-rashid-13/carebridge-clinic-flow/blob/main/docs/assessment-4/OPTION_1_WRITEUP.md) and [RAGAS_EVAL_REPORT.md](https://github.com/shahriar-rashid-13/carebridge-rag/blob/main/eval/RAGAS_EVAL_REPORT.md).
+
 ## 20. Testing and CI
 
 ### Clinic application
@@ -493,6 +523,10 @@ The [clinic CI workflow](https://github.com/shahriar-rashid-13/carebridge-clinic
 - failed Playwright reports/results are retained for seven days.
 
 The [gateway CI workflow](https://github.com/shahriar-rashid-13/carebridge-liteLLM/actions/workflows/ci.yml) compiles `app.py`, parses YAML, requires model entries/provider names, and rejects literal key-like values. It does not install the full proxy, contact providers, test live fallback behavior, or deploy Vercel. Live gateway diagnostics are manual and include model discovery/authentication, cross-key tool rounds, embedding/judge groups, and primary/fallback tool roundtrips; two diagnostic scripts report individual failures rather than enforcing a failing exit status.
+
+### Assessment 4 RAGAS gate and Metrics tests
+
+The [rag CI workflow](https://github.com/shahriar-rashid-13/carebridge-rag/actions/workflows/ci.yml) includes a hard **`ragas-gate`** job (`node scripts/ragas-gate.mjs --hard`) that fails when aggregate live results fall below `eval/ragas-thresholds.json`. It needs repository Actions secrets for the judge/gateway path used by the live harness. On clinic-flow, Vitest expectations for the receptionist Metrics RAGAS panel were updated to match the filled live JSON (not placeholder zeros).
 
 ## 21. Deployment, configuration, and environment variables
 
@@ -521,8 +555,11 @@ If `VITE_AI_FUNCTION` is omitted, source code falls back to the legacy function 
 | `EMAIL_SANDBOX_TO` | Optional synthetic-recipient redirect |
 | `UNSUBSCRIBE_SECRET`, `APP_URL` | Signed unsubscribe and public links |
 | `GOOGLE_SERVICE_ACCOUNT_JSON`, `GOOGLE_CALENDAR_ID` | Calendar worker |
+| `LANGFUSE_PUBLIC_KEY` | Optional JP Langfuse project public key |
+| `LANGFUSE_SECRET_KEY` | Optional JP Langfuse project secret key |
+| `LANGFUSE_BASE_URL` | JP host: `https://jp.cloud.langfuse.com` (required when keys are set; US cloud is wrong for JP keys) |
 
-Vault also requires `project_url` and `dispatcher_token`; these are created outside migrations.
+Vault also requires `project_url` and `dispatcher_token`; these are created outside migrations. Agentic RAG and Langfuse run inside the Supabase Edge Function `carebridge-ai-v3`; changing that code requires an Edge deploy (`npx supabase functions deploy carebridge-ai-v3 …`). A Vercel frontend deploy alone does not ship Edge tracing or retrieval changes.
 
 ### LiteLLM gateway
 
@@ -699,6 +736,15 @@ node tests\test_second_key.mjs
 | Corpus summary | [https://github.com/shahriar-rashid-13/carebridge-rag/blob/main/corpus/summary.json](https://github.com/shahriar-rashid-13/carebridge-rag/blob/main/corpus/summary.json) |
 | No-show report | [https://github.com/shahriar-rashid-13/carebridge-rag/blob/main/noshow/NOSHOW_REPORT.md](https://github.com/shahriar-rashid-13/carebridge-rag/blob/main/noshow/NOSHOW_REPORT.md) |
 | Demo script | [https://github.com/shahriar-rashid-13/carebridge-clinic-flow/blob/main/docs/assessment-3/DEMO_SCRIPT.md](https://github.com/shahriar-rashid-13/carebridge-clinic-flow/blob/main/docs/assessment-3/DEMO_SCRIPT.md) |
+| Assessment 4 Option 1 write-up | [https://github.com/shahriar-rashid-13/carebridge-clinic-flow/blob/main/docs/assessment-4/OPTION_1_WRITEUP.md](https://github.com/shahriar-rashid-13/carebridge-clinic-flow/blob/main/docs/assessment-4/OPTION_1_WRITEUP.md) |
+| Assessment 4 Langfuse notes | [https://github.com/shahriar-rashid-13/carebridge-clinic-flow/blob/main/docs/assessment-4/LANGFUSE.md](https://github.com/shahriar-rashid-13/carebridge-clinic-flow/blob/main/docs/assessment-4/LANGFUSE.md) |
+| Assessment 4 RAGAS report | [https://github.com/shahriar-rashid-13/carebridge-rag/blob/main/eval/RAGAS_EVAL_REPORT.md](https://github.com/shahriar-rashid-13/carebridge-rag/blob/main/eval/RAGAS_EVAL_REPORT.md) |
+
+### Assessment 4 demo checklist
+
+1. Receptionist `/metrics` → **RAGAS quality (Assessment 4)** shows the live scores from run `a4-live-2026-11-06`.
+2. `/ai` (v3): out-of-corpus refuse; multi-facet clinic question answered with citations when supported.
+3. Langfuse JP Tracing: observation/trace name `agentic_search_knowledge` after a `search_knowledge` turn (requires Edge `LANGFUSE_*` secrets).
 
 ### Demo accounts
 
@@ -708,4 +754,4 @@ node tests\test_second_key.mjs
 | Doctor | Dr. Marcus Vance | `marcus@example.com` |
 | Receptionist | Clara Morgan | `clara@example.com` |
 
-Passwords are intentionally omitted from this report and repository. They are supplied through the private reviewer/Dev Control Tower handoff. No real secret is included here.
+Passwords are intentionally omitted from this report and repository. They are supplied through the private reviewer/Dev Control Tower handoff (same accounts as Assessments 2–3). No real secret is included here.
