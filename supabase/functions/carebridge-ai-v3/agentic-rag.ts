@@ -1,5 +1,6 @@
 import { callGateway, MODEL_ALIAS } from "../carebridge-ai-v2/gateway.ts";
 import type { ToolContext } from "../carebridge-ai-v2/shared.ts";
+import { traceAgenticRag } from "./langfuse.ts";
 import {
   RESULT_COUNT,
   hybridRetrieve,
@@ -334,6 +335,7 @@ export async function agenticSearch(
   filters: { recordType: string | null; specialization: string | null },
   ctx: ToolContext,
 ): Promise<AgenticSearchResult> {
+  const startedAt = Date.now();
   const plan = await planQueries(question);
   const hopTrace: AgenticHop[] = [];
 
@@ -363,46 +365,58 @@ export async function agenticSearch(
   const support = await assessSupport(question, merged);
   const candidates = hopTrace.reduce((sum, hop) => sum + hop.candidates, 0);
 
-  if (!support.supported) {
-    return {
-      ok: true,
-      mode,
-      ranking,
-      candidates,
-      results: [],
-      supported: false,
-      refused: true,
-      message: REFUSE_MESSAGE,
-      agentic: {
-        complex: plan.complex,
-        plan_source: plan.source,
-        plan_reason: plan.reason,
-        queries: plan.queries,
-        hops: hopTrace,
-        support_source: support.source,
-        support_reason: support.reason,
-      },
-    };
-  }
-
-  return {
-    ok: true,
-    mode,
-    ranking,
-    candidates,
-    results: merged.map(toCited),
-    supported: true,
-    refused: false,
-    message:
-      "Answer only from these results and cite each fact with its citation, for example [FAQ-000021]. If a needed fact is missing, say you do not know.",
-    agentic: {
-      complex: plan.complex,
-      plan_source: plan.source,
-      plan_reason: plan.reason,
-      queries: plan.queries,
-      hops: hopTrace,
-      support_source: support.source,
-      support_reason: support.reason,
-    },
+  const agenticMeta = {
+    complex: plan.complex,
+    plan_source: plan.source,
+    plan_reason: plan.reason,
+    queries: plan.queries,
+    hops: hopTrace,
+    support_source: support.source,
+    support_reason: support.reason,
   };
+
+  const result: AgenticSearchResult = !support.supported
+    ? {
+        ok: true,
+        mode,
+        ranking,
+        candidates,
+        results: [],
+        supported: false,
+        refused: true,
+        message: REFUSE_MESSAGE,
+        agentic: agenticMeta,
+      }
+    : {
+        ok: true,
+        mode,
+        ranking,
+        candidates,
+        results: merged.map(toCited),
+        supported: true,
+        refused: false,
+        message:
+          "Answer only from these results and cite each fact with its citation, for example [FAQ-000021]. If a needed fact is missing, say you do not know.",
+        agentic: agenticMeta,
+      };
+
+  // Best-effort observability; never block the tool response.
+  void traceAgenticRag({
+    name: "agentic_search_knowledge",
+    traceId: crypto.randomUUID(),
+    question: question.slice(0, 500),
+    complex: plan.complex,
+    planSource: plan.source,
+    queries: plan.queries,
+    hops: hopTrace.length,
+    supported: result.supported,
+    refused: result.refused,
+    supportSource: support.source,
+    supportReason: support.reason,
+    candidates,
+    results: result.results.length,
+    ms: Date.now() - startedAt,
+  });
+
+  return result;
 }
