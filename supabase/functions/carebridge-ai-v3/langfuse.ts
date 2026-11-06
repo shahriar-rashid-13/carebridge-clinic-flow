@@ -2,6 +2,10 @@
  * Optional Langfuse OTEL-style event post for agentic RAG traces.
  * No-ops when LANGFUSE_PUBLIC_KEY / LANGFUSE_SECRET_KEY are unset (free-tier optional).
  * Never throws into the chat path — failures are swallowed and logged.
+ *
+ * Host: CareBridge uses the JP region. Set LANGFUSE_BASE_URL (or LANGFUSE_HOST) to
+ * https://jp.cloud.langfuse.com — the US default https://cloud.langfuse.com will
+ * accept nothing for JP project keys (or show empty Tracing).
  */
 
 export type LangfuseAgenticEvent = {
@@ -21,14 +25,17 @@ export type LangfuseAgenticEvent = {
   ms?: number;
 };
 
+/** Prefer LANGFUSE_BASE_URL; fall back to LANGFUSE_HOST; then JP CareBridge region. */
+const DEFAULT_LANGFUSE_HOST = "https://jp.cloud.langfuse.com";
+
 function langfuseConfig(): { host: string; auth: string } | null {
   const publicKey = Deno.env.get("LANGFUSE_PUBLIC_KEY")?.trim();
   const secretKey = Deno.env.get("LANGFUSE_SECRET_KEY")?.trim();
   if (!publicKey || !secretKey) return null;
   const host = (
-    Deno.env.get("LANGFUSE_HOST") ||
     Deno.env.get("LANGFUSE_BASE_URL") ||
-    "https://cloud.langfuse.com"
+    Deno.env.get("LANGFUSE_HOST") ||
+    DEFAULT_LANGFUSE_HOST
   ).replace(/\/+$/, "");
   const auth = btoa(`${publicKey}:${secretKey}`);
   return { host, auth };
@@ -41,7 +48,12 @@ export function langfuseEnabled(): boolean {
 /** Fire-and-forget ingestion. Safe to call without awaiting in hot paths. */
 export async function traceAgenticRag(event: LangfuseAgenticEvent): Promise<void> {
   const cfg = langfuseConfig();
-  if (!cfg) return;
+  if (!cfg) {
+    console.log("langfuse disabled: missing LANGFUSE_PUBLIC_KEY or LANGFUSE_SECRET_KEY");
+    return;
+  }
+
+  console.log(`langfuse enabled host=${cfg.host}`);
 
   const now = new Date().toISOString();
   const body = {
@@ -69,6 +81,7 @@ export async function traceAgenticRag(event: LangfuseAgenticEvent): Promise<void
             candidates: event.candidates,
             ms: event.ms ?? null,
             assessment: "A4-Option1",
+            langfuse_host: cfg.host,
           },
           tags: [
             "carebridge-ai-v3",
@@ -81,9 +94,11 @@ export async function traceAgenticRag(event: LangfuseAgenticEvent): Promise<void
     ],
   };
 
+  const ingestUrl = `${cfg.host}/api/public/ingestion`;
+
   const pending = (async () => {
     try {
-      const res = await fetch(`${cfg.host}/api/public/ingestion`, {
+      const res = await fetch(ingestUrl, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -92,14 +107,18 @@ export async function traceAgenticRag(event: LangfuseAgenticEvent): Promise<void
         body: JSON.stringify(body),
         signal: AbortSignal.timeout(4_000),
       });
+      // Never log Authorization or key material — status + host only.
       if (!res.ok) {
-        console.warn(`langfuse ingest HTTP ${res.status}`);
+        const detail = (await res.text().catch(() => "")).slice(0, 120);
+        console.warn(
+          `langfuse ingest HTTP ${res.status} host=${cfg.host} detail=${detail}`,
+        );
       } else {
-        console.log("langfuse ingest ok");
+        console.log(`langfuse ingest HTTP ${res.status} host=${cfg.host}`);
       }
     } catch (err) {
       console.warn(
-        `langfuse ingest failed: ${err instanceof Error ? err.message : String(err)}`,
+        `langfuse ingest failed host=${cfg.host}: ${err instanceof Error ? err.message : String(err)}`,
       );
     }
   })();

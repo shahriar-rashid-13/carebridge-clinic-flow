@@ -4,13 +4,20 @@
 
 `carebridge-ai-v3` posts optional agentic RAG traces via `langfuse.ts` when secrets exist.
 
+**CareBridge project region: Japan** — UI and ingest host is  
+`https://jp.cloud.langfuse.com`  
+**not** `https://cloud.langfuse.com` (US). Keys from the JP project must be paired with the JP host.
+
 | Env (Supabase Edge secrets) | Purpose |
 |---|---|
-| `LANGFUSE_PUBLIC_KEY` | Langfuse project public key |
-| `LANGFUSE_SECRET_KEY` | Langfuse project secret key |
-| `LANGFUSE_HOST` (optional) | Defaults to `https://cloud.langfuse.com` |
+| `LANGFUSE_PUBLIC_KEY` | JP project public key (Manage API keys) |
+| `LANGFUSE_SECRET_KEY` | JP project secret key |
+| `LANGFUSE_BASE_URL` | **Required for JP:** `https://jp.cloud.langfuse.com` |
+| `LANGFUSE_HOST` | Alias for base URL (optional; `BASE_URL` preferred) |
 
-Without those secrets the helper no-ops. Chat path never fails on missing Langfuse.
+Code default host is now the JP URL. If `LANGFUSE_BASE_URL` / `LANGFUSE_HOST` point at the US cloud, Tracing stays empty for JP keys.
+
+Without public/secret keys the helper no-ops. Chat path never fails on missing Langfuse.
 
 ## What is traced
 
@@ -26,31 +33,34 @@ Each `search_knowledge` / agentic turn records:
 
 Tags: `carebridge-ai-v3`, `agentic-rag`, `refuse`|`answer`, `multi-hop`|`single`.
 
-## Failure cases to review in Langfuse
+Ingest path: `POST {LANGFUSE_BASE_URL}/api/public/ingestion`
 
-1. **Unexpected refuse** — support judge `supported=false` on an in-corpus FAQ question (quota / weak retrieve).
-2. **Plan fallback** — `plan_source=fallback` when the planner times out; single-query retrieve only.
-3. **Empty hops** — hybrid retrieve returns 0 candidates below the 0.82 gte cutoff.
-4. **False answer** — refused=false on an out-of-corpus question (hallucination risk; should be rare with fail-closed support).
+## Setup (JP free cloud)
 
-## Setup (free cloud)
-
-1. Create a free project at [cloud.langfuse.com](https://cloud.langfuse.com).
-2. Copy public + secret keys.
-3. `npx supabase secrets set LANGFUSE_PUBLIC_KEY=... LANGFUSE_SECRET_KEY=... --project-ref pfvmpvbwdavusvwbddrd`
-4. Redeploy: `npx supabase functions deploy carebridge-ai-v3 --project-ref pfvmpvbwdavusvwbddrd --yes`
-5. Ask one refuse + one multi-hop question in `/ai`; confirm traces in Langfuse UI.
-
-Office machine note (2026-11-06 afternoon):
-
-- Edge code (`langfuse.ts`) is deployed with `carebridge-ai-v3`.
-- `LANGFUSE_PUBLIC_KEY` / `LANGFUSE_SECRET_KEY` are **not** in local `.env` files and **not** in Supabase project secrets yet.
-- Free Langfuse Cloud requires an interactive sign-in to create a project; the office agent cannot mint keys without Shahriar’s Langfuse account.
-- **Blocker:** paste free-cloud public + secret keys (or create the project and share keys via a secure channel). Then:
+1. Open [https://jp.cloud.langfuse.com](https://jp.cloud.langfuse.com) and create/select the CareBridge project.
+2. Copy **public + secret** keys from Manage API keys (same JP project).
+3. Set Edge secrets (values never committed):
 
 ```bat
-npx supabase secrets set LANGFUSE_PUBLIC_KEY=pk-lf-... LANGFUSE_SECRET_KEY=sk-lf-... --project-ref pfvmpvbwdavusvwbddrd
+npx supabase secrets set LANGFUSE_BASE_URL=https://jp.cloud.langfuse.com LANGFUSE_PUBLIC_KEY=pk-lf-... LANGFUSE_SECRET_KEY=sk-lf-... --project-ref pfvmpvbwdavusvwbddrd
 npx supabase functions deploy carebridge-ai-v3 --project-ref pfvmpvbwdavusvwbddrd --yes
 ```
 
-After that, ask one refuse + one multi-hop question on `/ai` and confirm traces in the Langfuse UI.
+4. Ask one knowledge question + one refuse on `/ai` (must hit `search_knowledge`).
+5. Refresh **Tracing** on the JP UI.
+
+## Failure cases to review in Langfuse
+
+1. **Unexpected refuse** — support judge `supported=false` on an in-corpus FAQ question.
+2. **Plan fallback** — `plan_source=fallback` when the planner times out.
+3. **Empty hops** — hybrid retrieve returns 0 candidates below the 0.82 gte cutoff.
+4. **False answer** — refused=false on an out-of-corpus question.
+5. **Region mismatch** — keys from JP but host still US (or the reverse).
+
+## Safe Edge logs (no key values)
+
+Look for:
+
+- `langfuse enabled host=https://jp.cloud.langfuse.com`
+- `langfuse ingest HTTP 207 host=...` (or `200`) on success
+- `langfuse ingest HTTP 4xx/5xx` or `langfuse ingest failed` on error
