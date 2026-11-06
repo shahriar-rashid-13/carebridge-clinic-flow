@@ -81,22 +81,33 @@ export async function traceAgenticRag(event: LangfuseAgenticEvent): Promise<void
     ],
   };
 
-  try {
-    const res = await fetch(`${cfg.host}/api/public/ingestion`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Basic ${cfg.auth}`,
-      },
-      body: JSON.stringify(body),
-      signal: AbortSignal.timeout(4_000),
-    });
-    if (!res.ok) {
-      console.warn(`langfuse ingest HTTP ${res.status}`);
+  const pending = (async () => {
+    try {
+      const res = await fetch(`${cfg.host}/api/public/ingestion`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Basic ${cfg.auth}`,
+        },
+        body: JSON.stringify(body),
+        signal: AbortSignal.timeout(4_000),
+      });
+      if (!res.ok) {
+        console.warn(`langfuse ingest HTTP ${res.status}`);
+      } else {
+        console.log("langfuse ingest ok");
+      }
+    } catch (err) {
+      console.warn(
+        `langfuse ingest failed: ${err instanceof Error ? err.message : String(err)}`,
+      );
     }
-  } catch (err) {
-    console.warn(
-      `langfuse ingest failed: ${err instanceof Error ? err.message : String(err)}`,
-    );
-  }
+  })();
+
+  // Keep the isolate alive after the HTTP response (same pattern as Sentry).
+  (
+    globalThis as { EdgeRuntime?: { waitUntil(p: Promise<unknown>): void } }
+  ).EdgeRuntime?.waitUntil(pending);
+
+  await pending;
 }
