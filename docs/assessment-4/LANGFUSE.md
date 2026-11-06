@@ -33,7 +33,9 @@ Each `search_knowledge` / agentic turn records:
 
 Tags: `carebridge-ai-v3`, `agentic-rag`, `refuse`|`answer`, `multi-hop`|`single`.
 
-Ingest path: `POST {LANGFUSE_BASE_URL}/api/public/ingestion`
+Ingest path: `POST {LANGFUSE_BASE_URL}/api/public/otel/v1/traces`  
+(OTLP/HTTP JSON + header `x-langfuse-ingestion-version: 4` for live JP Tracing).  
+Legacy `/api/public/ingestion` (`trace-create` / `span-create`) is sunset **2026-11-16** and can return HTTP **207** while the Tracing UI stays empty.
 
 ## Setup (JP free cloud)
 
@@ -62,5 +64,6 @@ npx supabase functions deploy carebridge-ai-v3 --project-ref pfvmpvbwdavusvwbddr
 Look for:
 
 - `langfuse enabled host=https://jp.cloud.langfuse.com`
-- `langfuse ingest HTTP 207 host=...` (or `200`) on success
-- `langfuse ingest HTTP 4xx/5xx` or `langfuse ingest failed` on error
+- `langfuse otel ingest HTTP 200 host=...` (empty body is normal for OTLP)
+- `langfuse otel ingest HTTP 4xx/5xx` or `langfuse otel ingest failed` on error
+- Legacy `langfuse ingest HTTP 207` with only a `_deprecation` body means the old path — redeploy this OTEL helper

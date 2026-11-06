@@ -400,8 +400,12 @@ export async function agenticSearch(
         agentic: agenticMeta,
       };
 
-  // Best-effort observability; never block the tool response.
-  void traceAgenticRag({
+  // Await ingest so waitUntil is registered and the POST finishes before the tool returns.
+  // Failures are swallowed inside traceAgenticRag — chat path never throws from Langfuse.
+  console.log(
+    `langfuse schedule search_knowledge refused=${result.refused} hops=${hopTrace.length}`,
+  );
+  await traceAgenticRag({
     name: "agentic_search_knowledge",
     traceId: crypto.randomUUID(),
     question: question.slice(0, 500),
