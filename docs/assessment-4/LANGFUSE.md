@@ -41,4 +41,16 @@ Tags: `carebridge-ai-v3`, `agentic-rag`, `refuse`|`answer`, `multi-hop`|`single`
 4. Redeploy: `npx supabase functions deploy carebridge-ai-v3 --project-ref pfvmpvbwdavusvwbddrd --yes`
 5. Ask one refuse + one multi-hop question in `/ai`; confirm traces in Langfuse UI.
 
-Office machine note (2026-11-06): keys were not present in local `.env` yet. Code is wired; secrets are the remaining step.
+Office machine note (2026-11-06 afternoon):
+
+- Edge code (`langfuse.ts`) is deployed with `carebridge-ai-v3`.
+- `LANGFUSE_PUBLIC_KEY` / `LANGFUSE_SECRET_KEY` are **not** in local `.env` files and **not** in Supabase project secrets yet.
+- Free Langfuse Cloud requires an interactive sign-in to create a project; the office agent cannot mint keys without Shahriar’s Langfuse account.
+- **Blocker:** paste free-cloud public + secret keys (or create the project and share keys via a secure channel). Then:
+
+```bat
+npx supabase secrets set LANGFUSE_PUBLIC_KEY=pk-lf-... LANGFUSE_SECRET_KEY=sk-lf-... --project-ref pfvmpvbwdavusvwbddrd
+npx supabase functions deploy carebridge-ai-v3 --project-ref pfvmpvbwdavusvwbddrd --yes
+```
+
+After that, ask one refuse + one multi-hop question on `/ai` and confirm traces in the Langfuse UI.
