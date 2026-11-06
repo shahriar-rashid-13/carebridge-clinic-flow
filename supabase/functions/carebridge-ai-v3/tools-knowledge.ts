@@ -59,6 +59,13 @@ export const searchKnowledge: ToolDefinition = {
     const query = textArg(args, "query", 300);
     const recordType = enumArg(args, "record_type", RECORD_TYPES);
     const specialization = enumArg(args, "specialization", SPECIALIZATIONS);
-    return agenticSearch(query, { recordType, specialization }, ctx);
+    console.log(
+      `search_knowledge start q_len=${query.length} record_type=${recordType ?? "any"}`,
+    );
+    const result = await agenticSearch(query, { recordType, specialization }, ctx);
+    console.log(
+      `search_knowledge done refused=${"refused" in result ? result.refused : "n/a"} results=${"results" in result && Array.isArray(result.results) ? result.results.length : 0}`,
+    );
+    return result;
   },
 };
