@@ -197,6 +197,7 @@ describe("agents", () => {
     ]);
     expect(names("scheduling", "patient")).toContain("propose_booking");
     expect(names("scheduling", "patient")).not.toContain("propose_confirm_appointment");
+    expect(names("triage", "patient")).toContain("get_available_slots");
     expect(names("triage", "receptionist")).not.toContain("propose_create_bill");
   });
 
@@ -312,6 +313,16 @@ describe("keyword router", () => {
     expect(keywordRoute("show my bill", ["triage", "scheduling", "records"], DOCS).agent).toBe(
       "triage",
     );
+  });
+
+  it("queues scheduling when fever asks who to see tomorrow", () => {
+    expect(
+      keywordRoute("I have 101 fever, whom can I see tomorrow?", [...all], DOCS),
+    ).toMatchObject({
+      agent: "triage",
+      handoffs: ["scheduling"],
+      source: "keywords",
+    });
   });
 });
 

@@ -2,7 +2,15 @@ import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2";
 import { executeAction, type ActionResult } from "./actions.ts";
 import { callGateway, FALLBACK_MODEL_ALIAS, MODEL_ALIAS, type GatewayMessage } from "./gateway.ts";
 import { reportError, type ErrorReport } from "./sentry.ts";
-import { isUuid, ROLES, todayIn, type Role, type ToolContext } from "./shared.ts";
+import {
+  addDays,
+  isUuid,
+  ROLES,
+  todayIn,
+  weekdayLongOf,
+  type Role,
+  type ToolContext,
+} from "./shared.ts";
 import { executeToolCall, toolSchemas, toolsForRole, type ToolTrace } from "./tools.ts";
 
 type ChatMessage = { role: "user" | "assistant"; content: string };
@@ -50,9 +58,10 @@ const ROLE_GUIDANCE: Record<Role, string> = {
 };
 
 function systemPrompt(role: Role, today: string, timeZone: string): string {
+  const tomorrow = addDays(today, 1);
   return [
     `You are CareBridge AI, the assistant inside the CareBridge clinic app. The signed-in user is a ${role}.`,
-    `Today is ${today} (clinic time zone ${timeZone}). Resolve relative dates like "tomorrow" or "next Monday" from this date and pass dates to tools as YYYY-MM-DD.`,
+    `Clinic calendar (${timeZone}): today is ${weekdayLongOf(today)}, ${today}; tomorrow is ${weekdayLongOf(tomorrow)}, ${tomorrow}. Resolve relative dates only from that line and pass dates to tools as YYYY-MM-DD. Never invent weekday names.`,
     "Read clinic data through the provided tools. Tools only return data this user is allowed to see.",
     "Always use a tool for clinic facts. Never invent doctors, slots, appointments, prescriptions, bills, patients, or prices.",
     ROLE_GUIDANCE[role],
